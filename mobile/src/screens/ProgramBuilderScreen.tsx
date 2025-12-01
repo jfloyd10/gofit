@@ -8,15 +8,15 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, Theme } from '../theme';
-import { Screen } from '../components/ui/Screen';
 import { PrimaryButton } from '../components/ui/PrimaryButton';
 import { useAuth } from '../providers/AuthProvider';
 import { ProgramBuilderProvider, useProgramBuilder } from '../providers/ProgramBuilderProvider';
-import { ProgramHeader } from '../components/program-builder/ProgramHeader';
+import { ProgramMetadataForm, ProgramSummaryHeader } from '../components/program-builder/ProgramHeader';
 import { WeekCard } from '../components/program-builder/WeekCard';
 import { SessionEditor } from '../components/program-builder/SessionEditor';
 import { BuilderSession } from '../lib/types/program';
@@ -28,6 +28,8 @@ interface ProgramBuilderScreenProps {
   onSaveSuccess?: (programId: number) => void;
 }
 
+type BuilderStep = 'metadata' | 'builder';
+
 const ProgramBuilderContent: React.FC<ProgramBuilderScreenProps> = ({
   programId,
   onBack,
@@ -38,13 +40,15 @@ const ProgramBuilderContent: React.FC<ProgramBuilderScreenProps> = ({
   const { accessToken } = useAuth();
   const { program, addWeek, isValid, validationErrors } = useProgramBuilder();
 
-  const [headerExpanded, setHeaderExpanded] = useState(true);
+  // State
+  const [currentStep, setCurrentStep] = useState<BuilderStep>('metadata');
   const [selectedSession, setSelectedSession] = useState<{
     session: BuilderSession;
     weekTempId: string;
   } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Handlers
   const handleSessionPress = useCallback((session: BuilderSession, weekTempId: string) => {
     setSelectedSession({ session, weekTempId });
   }, []);
@@ -52,6 +56,14 @@ const ProgramBuilderContent: React.FC<ProgramBuilderScreenProps> = ({
   const handleCloseSessionEditor = useCallback(() => {
     setSelectedSession(null);
   }, []);
+
+  const handleContinue = () => {
+    if (!program.title.trim()) {
+      Alert.alert('Required', 'Please enter a program title to continue.');
+      return;
+    }
+    setCurrentStep('builder');
+  };
 
   const handleSave = async () => {
     if (!accessToken) {
@@ -96,138 +108,129 @@ const ProgramBuilderContent: React.FC<ProgramBuilderScreenProps> = ({
     );
   };
 
-  const totalSessions = program.weeks.reduce((acc, week) => acc + week.sessions.length, 0);
-  const totalExercises = program.weeks.reduce(
-    (acc, week) => acc + week.sessions.reduce(
-      (sAcc, session) => sAcc + session.blocks.reduce(
-        (bAcc, block) => bAcc + block.activities.length, 0
-      ), 0
-    ), 0
-  );
-
   return (
     <View style={styles.container}>
-      {/* Header */}
+      {/* Top Navigation Bar */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleDiscard}>
-          <Ionicons name="close" size={24} color={theme.colors.primaryText} />
+        <TouchableOpacity style={styles.backButton} onPress={currentStep === 'metadata' ? handleDiscard : () => setCurrentStep('metadata')}>
+          <Ionicons name={currentStep === 'metadata' ? "close" : "arrow-back"} size={24} color={theme.colors.primaryText} />
         </TouchableOpacity>
+        
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>
             {programId ? 'Edit Program' : 'New Program'}
           </Text>
+          <View style={styles.stepIndicator}>
+            <View style={[styles.stepDot, currentStep === 'metadata' && styles.stepDotActive]} />
+            <View style={[styles.stepDot, currentStep === 'builder' && styles.stepDotActive]} />
+          </View>
         </View>
-        <TouchableOpacity
-          style={styles.saveButton}
-          onPress={handleSave}
-          disabled={isSaving || !isValid}
-        >
-          {isSaving ? (
-            <ActivityIndicator size="small" color={theme.colors.primary} />
-          ) : (
-            <Text style={[
-              styles.saveButtonText,
-              !isValid && styles.saveButtonTextDisabled,
-            ]}>
-              Save
-            </Text>
-          )}
-        </TouchableOpacity>
+
+        {/* Placeholder for right side balance */}
+        <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
       >
-        {/* Program Header */}
-        <ProgramHeader
-          isExpanded={headerExpanded}
-          onToggleExpand={() => setHeaderExpanded(!headerExpanded)}
-        />
-
-        {/* Stats Bar */}
-        <View style={styles.statsBar}>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{program.weeks.length}</Text>
-            <Text style={styles.statLabel}>Weeks</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{totalSessions}</Text>
-            <Text style={styles.statLabel}>Sessions</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{totalExercises}</Text>
-            <Text style={styles.statLabel}>Exercises</Text>
-          </View>
-        </View>
-
-        {/* Weeks Section */}
-        <View style={styles.weeksSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Program Structure</Text>
-          </View>
-
-          {program.weeks.length === 0 ? (
-            <View style={styles.emptyState}>
-              <View style={styles.emptyIcon}>
-                <Ionicons name="calendar-outline" size={48} color={theme.colors.border} />
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* STEP 1: METADATA */}
+          {currentStep === 'metadata' && (
+            <View style={styles.stepContainer}>
+              <View style={styles.stepHeader}>
+                <Text style={styles.stepTitle}>Program Details</Text>
+                <Text style={styles.stepSubtitle}>Start by setting up the basic information for your program.</Text>
               </View>
-              <Text style={styles.emptyTitle}>No weeks added yet</Text>
-              <Text style={styles.emptySubtitle}>
-                Start building your program by adding your first week
-              </Text>
-              <TouchableOpacity style={styles.emptyAddButton} onPress={addWeek}>
-                <Ionicons name="add-circle" size={20} color={theme.colors.surface} />
-                <Text style={styles.emptyAddButtonText}>Add First Week</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <>
-              {program.weeks.map((week) => (
-                <WeekCard
-                  key={week.tempId}
-                  week={week}
-                  onSessionPress={(session) => handleSessionPress(session, week.tempId)}
-                />
-              ))}
               
-              <TouchableOpacity style={styles.addWeekButton} onPress={addWeek}>
-                <Ionicons name="add-circle-outline" size={20} color={theme.colors.primary} />
-                <Text style={styles.addWeekText}>Add Week</Text>
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
-
-        {/* Validation Errors */}
-        {validationErrors.length > 0 && (
-          <View style={styles.validationContainer}>
-            <View style={styles.validationHeader}>
-              <Ionicons name="alert-circle" size={18} color={theme.colors.error} />
-              <Text style={styles.validationTitle}>To Complete</Text>
+              <ProgramMetadataForm />
             </View>
-            {validationErrors.map((error, index) => (
-              <Text key={index} style={styles.validationError}>• {error}</Text>
-            ))}
-          </View>
-        )}
+          )}
 
-        {/* Bottom Padding */}
-        <View style={styles.bottomPadding} />
-      </ScrollView>
+          {/* STEP 2: BUILDER */}
+          {currentStep === 'builder' && (
+            <View style={styles.stepContainer}>
+               {/* Summary Header of Step 1 */}
+              <ProgramSummaryHeader onEditPress={() => setCurrentStep('metadata')} />
+
+              {/* Weeks Section */}
+              <View style={styles.weeksSection}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Structure</Text>
+                </View>
+
+                {program.weeks.length === 0 ? (
+                  <View style={styles.emptyState}>
+                    <View style={styles.emptyIcon}>
+                      <Ionicons name="calendar-outline" size={48} color={theme.colors.border} />
+                    </View>
+                    <Text style={styles.emptyTitle}>No weeks added yet</Text>
+                    <Text style={styles.emptySubtitle}>
+                      Start building your program by adding your first week
+                    </Text>
+                    <TouchableOpacity style={styles.emptyAddButton} onPress={addWeek}>
+                      <Ionicons name="add-circle" size={20} color={theme.colors.surface} />
+                      <Text style={styles.emptyAddButtonText}>Add First Week</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <>
+                    {program.weeks.map((week) => (
+                      <WeekCard
+                        key={week.tempId}
+                        week={week}
+                        onSessionPress={(session) => handleSessionPress(session, week.tempId)}
+                      />
+                    ))}
+                    
+                    <TouchableOpacity style={styles.addWeekButton} onPress={addWeek}>
+                      <Ionicons name="add-circle-outline" size={20} color={theme.colors.primary} />
+                      <Text style={styles.addWeekText}>Add Week</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
+              
+              {/* Validation Errors for Step 2 */}
+              {validationErrors.length > 0 && (
+                <View style={styles.validationContainer}>
+                  <View style={styles.validationHeader}>
+                    <Ionicons name="alert-circle" size={18} color={theme.colors.error} />
+                    <Text style={styles.validationTitle}>To Complete</Text>
+                  </View>
+                  {validationErrors.map((error, index) => (
+                    <Text key={index} style={styles.validationError}>• {error}</Text>
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* Bottom Padding */}
+          <View style={styles.bottomPadding} />
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Fixed Bottom Actions */}
       <View style={styles.bottomActions}>
-        <PrimaryButton
-          title={isSaving ? 'Saving...' : 'Save Program'}
-          onPress={handleSave}
-          loading={isSaving}
-          disabled={!isValid}
-          style={styles.saveFullButton}
-        />
+        {currentStep === 'metadata' ? (
+           <PrimaryButton
+             title="Continue"
+             onPress={handleContinue}
+             disabled={!program.title.trim()}
+           />
+        ) : (
+          <PrimaryButton
+            title={isSaving ? 'Saving...' : 'Save Program'}
+            onPress={handleSave}
+            loading={isSaving}
+            disabled={!isValid}
+          />
+        )}
       </View>
 
       {/* Session Editor Modal */}
@@ -282,57 +285,54 @@ const createStyles = (theme: Theme) =>
       fontWeight: '600',
       color: theme.colors.primaryText,
     },
-    saveButton: {
-      paddingVertical: theme.spacing(1),
-      paddingHorizontal: theme.spacing(2),
+    stepIndicator: {
+      flexDirection: 'row',
+      gap: 6,
+      marginTop: 6,
     },
-    saveButtonText: {
-      fontSize: theme.typography.fontSizeMd,
-      fontWeight: '600',
-      color: theme.colors.primary,
+    stepDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: theme.colors.border,
     },
-    saveButtonTextDisabled: {
-      color: theme.colors.secondaryText,
+    stepDotActive: {
+      backgroundColor: theme.colors.primary,
+      width: 12,
     },
 
     scrollView: {
       flex: 1,
     },
     scrollContent: {
-      padding: theme.spacing(4),
+      // padding handled in step containers
     },
-
-    // Stats Bar
-    statsBar: {
-      flexDirection: 'row',
-      backgroundColor: theme.colors.surface,
-      borderRadius: 12,
-      padding: theme.spacing(3),
-      marginBottom: theme.spacing(4),
-      alignItems: 'center',
-      justifyContent: 'space-around',
+    stepContainer: {
+      paddingTop: theme.spacing(2),
     },
-    statItem: {
-      alignItems: 'center',
+    
+    // Step 1 Header
+    stepHeader: {
+      paddingHorizontal: theme.spacing(4),
+      paddingVertical: theme.spacing(4),
+      marginBottom: theme.spacing(2),
     },
-    statValue: {
+    stepTitle: {
       fontSize: theme.typography.fontSizeXl,
       fontWeight: '700',
       color: theme.colors.primaryText,
+      marginBottom: theme.spacing(1),
     },
-    statLabel: {
-      fontSize: theme.typography.fontSizeXs,
+    stepSubtitle: {
+      fontSize: theme.typography.fontSizeMd,
       color: theme.colors.secondaryText,
-      marginTop: 2,
-    },
-    statDivider: {
-      width: 1,
-      height: 30,
-      backgroundColor: theme.colors.border,
+      lineHeight: 22,
     },
 
     // Weeks Section
     weeksSection: {
+      paddingHorizontal: theme.spacing(4),
+      marginTop: theme.spacing(4),
       marginBottom: theme.spacing(4),
     },
     sectionHeader: {
@@ -353,6 +353,9 @@ const createStyles = (theme: Theme) =>
       paddingVertical: theme.spacing(10),
       backgroundColor: theme.colors.surface,
       borderRadius: 16,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderStyle: 'dashed',
     },
     emptyIcon: {
       marginBottom: theme.spacing(3),
@@ -408,6 +411,7 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.colors.errorSoft,
       borderRadius: 12,
       padding: theme.spacing(3),
+      marginHorizontal: theme.spacing(4),
       marginBottom: theme.spacing(4),
     },
     validationHeader: {
@@ -435,9 +439,6 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.colors.surface,
       borderTopWidth: 1,
       borderTopColor: theme.colors.border,
-    },
-    saveFullButton: {
-      // uses default PrimaryButton styles
     },
 
     bottomPadding: {

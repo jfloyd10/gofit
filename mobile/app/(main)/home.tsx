@@ -180,16 +180,6 @@ export default function HomeScreen() {
         )}
       </Screen>
 
-      {/* Floating Action Button */}
-      {!loading && (
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={handleCreateProgram}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="add" size={30} color="white" />
-        </TouchableOpacity>
-      )}
     </View>
   );
 }

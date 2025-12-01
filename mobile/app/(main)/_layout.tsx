@@ -24,8 +24,10 @@ export default function MainLayout() {
 
           if (route.name === 'home') {
             iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'workouts') {
+          } else if (route.name == 'discovery') {
             iconName = focused ? 'barbell' : 'barbell-outline';
+          } else if (route.name === 'workouts') {
+            iconName = focused ? 'add' : 'add-outline';
           } else if (route.name === 'profile') {
             iconName = focused ? 'person-circle' : 'person-circle-outline';
           } else {
@@ -43,6 +45,13 @@ export default function MainLayout() {
         }}
       />
       <Tabs.Screen
+        name="discovery"
+        options={{
+          title: 'Discover',
+        }}
+      />
+      
+      <Tabs.Screen
         name="workouts"
         options={{
           title: 'Create',
@@ -55,5 +64,6 @@ export default function MainLayout() {
         }}
       />
     </Tabs>
+    
   );
 }

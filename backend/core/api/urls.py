@@ -27,6 +27,9 @@ from .views import (
     DashboardStatsView,
     ExerciseUsageView,
     BulkExerciseSearchView,
+
+    # Discovery View
+    DiscoveryFeedView,
 )
 
 # Create router and register viewsets
@@ -59,6 +62,8 @@ urlpatterns = [
     path('public-programs/', PublicProgramsView.as_view(), name='public-programs'),
     path('template-programs/', TemplateProgramsView.as_view(), name='template-programs'),
     path('public-programs/<int:program_id>/copy/', CopyPublicProgramView.as_view(), name='copy-public-program'),
+
+    path('discovery/feed/', DiscoveryFeedView.as_view(), name='discovery-feed'),
 ]
 
 """

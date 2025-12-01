@@ -1314,3 +1314,35 @@ class BulkExerciseSearchView(APIView):
             'previous': page - 1 if page > 1 else None,
             'results': serializer.data,
         })
+
+
+
+# =============================================================================
+# VIEWS FOR DISCOVERY 
+# =============================================================================
+
+class DiscoveryFeedView(APIView):
+    """
+    Returns aggregated lists for the Discovery Screen:
+    - Trending (Random selection of public programs)
+    - Featured (Templates or high-quality programs)
+    - New (Most recently created public programs)
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        # 1. New / Recent Programs
+        new_programs = Program.objects.filter(is_public=True).order_by('-created_at')[:5]
+        
+        # 2. Featured / Top (Using Templates as a proxy for "High Quality" or "Top")
+        featured_programs = Program.objects.filter(is_public=True, is_template=True).order_by('?')[:5]
+        
+        # 3. Trending (Random selection for now, to simulate dynamic content)
+        # In a real app, this would use views/likes/copies_count
+        trending_programs = Program.objects.filter(is_public=True).order_by('?')[:5]
+
+        return Response({
+            'new': ProgramListSerializer(new_programs, many=True, context={'request': request}).data,
+            'featured': ProgramListSerializer(featured_programs, many=True, context={'request': request}).data,
+            'trending': ProgramListSerializer(trending_programs, many=True, context={'request': request}).data,
+        })

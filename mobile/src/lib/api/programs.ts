@@ -107,6 +107,12 @@ export interface ProgramStats {
   programs_by_difficulty: { difficulty: string; count: number }[];
 }
 
+export interface DiscoveryFeedResponse {
+  new: ProgramListItem[];
+  featured: ProgramListItem[];
+  trending: ProgramListItem[];
+}
+
 export const programsApi = {
   /**
    * Get all programs for the current user (paginated)
@@ -289,6 +295,9 @@ export const programsApi = {
     request<Program>(`/core/public-programs/${programId}/copy/`, {
       method: 'POST',
     }, accessToken),
+
+  getDiscoveryFeed: (accessToken: string) =>
+      request<DiscoveryFeedResponse>('/core/discovery/feed/', {}, accessToken),
 };
 
 /**
