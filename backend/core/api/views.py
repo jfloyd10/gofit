@@ -828,7 +828,7 @@ class PublicProgramsView(generics.ListAPIView):
     List public programs (for discovery/marketplace).
     """
     serializer_class = ProgramListSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    #permission_classes = [permissions.IsAuthenticated]
     pagination_class = StandardResultsPagination
     
     def get_queryset(self):

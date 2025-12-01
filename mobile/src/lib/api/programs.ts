@@ -75,7 +75,7 @@ export interface ProgramListItem {
   focus_display: string;
   difficulty: string;
   difficulty_display: string;
-  image: string | null;
+  image_url: string | null;
   is_public: boolean;
   is_template: boolean;
   week_count: number;

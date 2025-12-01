@@ -480,6 +480,7 @@ class ProgramListSerializer(serializers.ModelSerializer):
     session_count = serializers.SerializerMethodField()
     focus_display = serializers.CharField(source='get_focus_display', read_only=True)
     difficulty_display = serializers.CharField(source='get_difficulty_display', read_only=True)
+    image_url = serializers.SerializerMethodField()
     
     class Meta:
         model = Program
@@ -491,7 +492,7 @@ class ProgramListSerializer(serializers.ModelSerializer):
             'focus_display',
             'difficulty',
             'difficulty_display',
-            'image',
+            'image_url',
             'is_public',
             'is_template',
             'week_count',
@@ -508,6 +509,14 @@ class ProgramListSerializer(serializers.ModelSerializer):
         for week in obj.weeks.all():
             count += week.sessions.count()
         return count
+    
+    def get_image_url(self, obj):
+            if obj.image:
+                request = self.context.get('request')
+                if request:
+                    return request.build_absolute_uri(obj.image.url)
+                return obj.image.url
+            return None
 
 
 class ProgramDetailSerializer(serializers.ModelSerializer):
@@ -516,6 +525,7 @@ class ProgramDetailSerializer(serializers.ModelSerializer):
     weeks = WeekDetailSerializer(many=True, read_only=True)
     focus_display = serializers.CharField(source='get_focus_display', read_only=True)
     difficulty_display = serializers.CharField(source='get_difficulty_display', read_only=True)
+    image_url = serializers.SerializerMethodField()
     
     class Meta:
         model = Program
@@ -528,7 +538,7 @@ class ProgramDetailSerializer(serializers.ModelSerializer):
             'focus_display',
             'difficulty',
             'difficulty_display',
-            'image',
+            'image_url',
             'video_url',
             'price',
             'is_public',
@@ -538,6 +548,14 @@ class ProgramDetailSerializer(serializers.ModelSerializer):
             'updated_at',
         ]
         read_only_fields = ['id', 'user', 'created_at', 'updated_at']
+
+    def get_image_url(self, obj):
+            if obj.image:
+                request = self.context.get('request')
+                if request:
+                    return request.build_absolute_uri(obj.image.url)
+                return obj.image.url
+            return None
 
 
 class ProgramCreateUpdateSerializer(serializers.ModelSerializer):

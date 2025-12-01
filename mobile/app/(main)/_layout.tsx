@@ -45,7 +45,7 @@ export default function MainLayout() {
       <Tabs.Screen
         name="workouts"
         options={{
-          title: 'Workouts',
+          title: 'Create',
         }}
       />
       <Tabs.Screen
