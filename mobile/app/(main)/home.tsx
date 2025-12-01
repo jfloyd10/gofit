@@ -34,7 +34,7 @@ export default function HomeScreen() {
         {/* 🔹 Temporary debug button to open a specific session */}
         <PrimaryButton
           title="Debug: Open Session #1"
-          onPress={() => router.push('/session/4')}
+          onPress={() => router.push('/session/1')}
           style={styles.button}
         />
 

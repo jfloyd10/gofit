@@ -1,4 +1,5 @@
-export const API_BASE_URL = 'http://10.0.2.2:8000/api/v1';
+export const API_BASE_URL_1 = 'https://rural-zulma-unhued.ngrok-free.dev/api/v1';
+export const API_BASE_URL = 'http://192.168.1.199:8000/api/v1';
 
 export interface AuthTokens {
   access: string;
