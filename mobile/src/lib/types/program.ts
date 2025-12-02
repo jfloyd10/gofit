@@ -22,7 +22,7 @@ export interface Program {
   description: string | null;
   focus: ProgramFocus;
   difficulty: ProgramDifficulty;
-  image: string | null;
+  image_url: string | null;
   video_url: string | null;
   price: number;
   is_public: boolean;
