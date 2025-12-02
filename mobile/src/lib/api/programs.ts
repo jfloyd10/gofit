@@ -298,6 +298,9 @@ export const programsApi = {
 
   getDiscoveryFeed: (accessToken: string) =>
       request<DiscoveryFeedResponse>('/core/discovery/feed/', {}, accessToken),
+
+  getPublicProgram: (programId: number, accessToken: string) =>
+      request<Program>(`/core/public-programs/${programId}/`, {}, accessToken),
 };
 
 /**

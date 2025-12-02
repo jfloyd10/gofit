@@ -115,9 +115,9 @@ export default function DiscoveryScreen() {
   };
 
   const handleProgramPress = (programId: number) => {
-    // Navigate to a read-only view or copy preview of the program
-    // Assuming we reuse the builder route or a specific detail route
-    router.push(`/program-builder/${programId}?mode=view`); 
+    // Navigate to the new Program Detail screen
+    // We pass 'type=public' so the screen knows to show "Add to Library" instead of "Edit"
+    router.push(`/program-details/${programId}?type=public`); 
   };
 
   const clearFilters = () => {

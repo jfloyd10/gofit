@@ -1346,3 +1346,44 @@ class DiscoveryFeedView(APIView):
             'featured': ProgramListSerializer(featured_programs, many=True, context={'request': request}).data,
             'trending': ProgramListSerializer(trending_programs, many=True, context={'request': request}).data,
         })
+    
+
+
+class PublicProgramDetailView(generics.RetrieveAPIView):
+    """
+    Retrieve full details of a public program (read-only).
+    Used for the Program Detail screen when viewing programs from Discovery.
+    """
+    serializer_class = ProgramDetailSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        # Reusing the optimized prefetch logic from ProgramViewSet
+        return Program.objects.filter(is_public=True).prefetch_related(
+            Prefetch(
+                'weeks',
+                queryset=Week.objects.order_by('week_number').prefetch_related(
+                    Prefetch(
+                        'sessions',
+                        queryset=Session.objects.order_by('day_ordering').prefetch_related(
+                            Prefetch(
+                                'blocks',
+                                queryset=SessionBlock.objects.order_by('block_order').prefetch_related(
+                                    Prefetch(
+                                        'activities',
+                                        queryset=Activity.objects.order_by('order_in_block').select_related(
+                                            'exercise'
+                                        ).prefetch_related(
+                                            Prefetch(
+                                                'prescriptions',
+                                                queryset=ActivityPrescription.objects.order_by('set_number')
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        )
