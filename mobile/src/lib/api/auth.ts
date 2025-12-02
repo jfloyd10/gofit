@@ -1,28 +1,10 @@
+import { AuthUser } from '../types/user'; 
 export const API_BASE_URL_1 = 'https://rural-zulma-unhued.ngrok-free.dev/api/v1';
 export const API_BASE_URL = 'http://192.168.1.199:8000/api/v1';
 
 export interface AuthTokens {
   access: string;
   refresh: string;
-}
-
-export interface UserProfile {
-  display_name: string;
-  bio: string;
-  avatar: string;
-  date_of_birth: string | null;
-  height_cm: number | null;
-  weight_kg: number | null;
-  units: 'metric' | 'imperial';
-}
-
-export interface AuthUser {
-  id: number;
-  username: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  profile: UserProfile;
 }
 
 export class ApiError extends Error {
@@ -36,7 +18,7 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(
+export async function request<T>(
   path: string,
   options: RequestInit = {},
   token?: string | null,
@@ -62,7 +44,6 @@ async function request<T>(
       headers,
     });
   } catch (err) {
-    // Network / connectivity issue
     throw new ApiError(0, 'Network error. Please check your internet connection and try again.');
   }
 
@@ -73,12 +54,11 @@ async function request<T>(
     try {
       data = JSON.parse(text);
     } catch {
-      data = text; // Not JSON
+      data = text;
     }
   }
 
   if (!response.ok) {
-    // Try to derive a friendly message
     let message = 'Something went wrong. Please try again.';
     if (data && typeof data === 'object') {
       if (data.detail) {

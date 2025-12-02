@@ -17,6 +17,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "height_cm",
             "weight_kg",
             "units",
+            "is_verified"
         ]
 
 
@@ -30,23 +31,39 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "username", "email"]
 
     def update(self, instance, validated_data):
-        # Because of source="user_profile", nested data comes in under "profile"
         profile_data = validated_data.pop("profile", {})
-
-        # Update user fields
         instance = super().update(instance, validated_data)
-
-        # Update nested profile
         profile = instance.user_profile
         for attr, value in profile_data.items():
             setattr(profile, attr, value)
         profile.save()
-
         return instance
 
 
+class PublicUserSerializer(serializers.ModelSerializer):
+    """
+    Read-only serializer for viewing other users' profiles.
+    """
+    profile = UserProfileSerializer(source="user_profile", read_only=True)
+    followers_count = serializers.IntegerField(source="followers.count", read_only=True)
+    following_count = serializers.IntegerField(source="following.count", read_only=True)
+    programs_count = serializers.IntegerField(source="programs.count", read_only=True)
+
+    class Meta:
+        model = User
+        fields = [
+            "id", 
+            "username", 
+            "first_name", 
+            "last_name", 
+            "profile", 
+            "followers_count", 
+            "following_count",
+            "programs_count"
+        ]
+
+
 class RegisterSerializer(serializers.ModelSerializer):
-    # extend default user fields for registration
     password = serializers.CharField(write_only=True)
     password_confirm = serializers.CharField(write_only=True)
     display_name = serializers.CharField(write_only=True, required=False, allow_blank=True)
@@ -66,7 +83,6 @@ class RegisterSerializer(serializers.ModelSerializer):
         display_name = validated_data.pop("display_name", "")
 
         user = User.objects.create_user(**validated_data)
-        # profile is auto-created via signal; we can update it:
         if display_name:
             user.user_profile.display_name = display_name
             user.user_profile.save()

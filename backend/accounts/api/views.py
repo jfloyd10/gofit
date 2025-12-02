@@ -4,7 +4,7 @@ from rest_framework.views import APIView
 
 from django.contrib.auth import get_user_model
 
-from .serializers import RegisterSerializer, UserSerializer
+from .serializers import RegisterSerializer, UserSerializer, PublicUserSerializer
 
 User = get_user_model()
 
@@ -44,3 +44,28 @@ class CurrentUserView(APIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         return Response(UserSerializer(user).data)
+    
+
+class CurrentUserView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data)
+
+    def patch(self, request, *args, **kwargs):
+        serializer = UserSerializer(request.user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response(UserSerializer(user).data)
+
+
+class UserDetailView(generics.RetrieveAPIView):
+    """
+    GET /api/v1/accounts/users/<username>/
+    Publicly accessible user profile details.
+    """
+    queryset = User.objects.all()
+    serializer_class = PublicUserSerializer
+    lookup_field = 'username'
+    permission_classes = [permissions.AllowAny]

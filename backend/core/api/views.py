@@ -1387,3 +1387,22 @@ class PublicProgramDetailView(generics.RetrieveAPIView):
                 )
             )
         )
+    
+
+class UserPublicProgramsListView(generics.ListAPIView):
+    """
+    List public programs for a specific user.
+    GET /api/v1/core/programs/public/?username=<username>
+    """
+    serializer_class = ProgramListSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    pagination_class = StandardResultsPagination
+
+    def get_queryset(self):
+        queryset = Program.objects.filter(is_public=True).prefetch_related('weeks__sessions')
+        
+        username = self.request.query_params.get('username')
+        if username:
+            queryset = queryset.filter(user__username=username)
+            
+        return queryset.order_by('-created_at')

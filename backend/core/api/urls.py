@@ -30,7 +30,8 @@ from .views import (
 
     # Discovery View
     DiscoveryFeedView,
-    PublicProgramDetailView
+    PublicProgramDetailView,
+    UserPublicProgramsListView
 )
 
 # Create router and register viewsets
@@ -66,6 +67,7 @@ urlpatterns = [
 
     path('discovery/feed/', DiscoveryFeedView.as_view(), name='discovery-feed'),
     path('public-programs/<int:pk>/', PublicProgramDetailView.as_view(), name='public-program-detail'),
+    path("programs/public/", UserPublicProgramsListView.as_view(), name="user-public-programs"),
 ]
 
 """
