@@ -1,5 +1,3 @@
-// src/components/program-builder/ExerciseLibrary.tsx
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
@@ -16,7 +14,6 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -24,8 +21,7 @@ import { useTheme, Theme } from '../../theme';
 import { useAuth } from '../../providers/AuthProvider';
 import { exercisesApi } from '../../lib/api/programs';
 import { Exercise, EXERCISE_CATEGORIES, MUSCLE_GROUPS } from '../../lib/types/program';
-import { PrimaryButton } from '../ui/PrimaryButton';
-import { TextField } from '../ui/TextField';
+import { ExerciseDetail } from './ExerciseDetail';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 const MODAL_HEIGHT = SCREEN_HEIGHT * 0.92;
@@ -100,6 +96,11 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
   });
   const [showFilters, setShowFilters] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  
+  // Exercise Detail state - using separate visibility flag
+  const [exerciseDetailVisible, setExerciseDetailVisible] = useState(false);
+  const [selectedExerciseForDetail, setSelectedExerciseForDetail] = useState<Exercise | null>(null);
+  
   const searchInputRef = useRef<TextInput>(null);
 
   // Custom exercise form state
@@ -263,28 +264,48 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
     }
   };
 
-  const isExerciseSelected = (exercise: Exercise) => {
+  const isExerciseSelected = useCallback((exercise: Exercise) => {
     return selectedExercises.some((e) => e.id === exercise.id);
-  };
+  }, [selectedExercises]);
+
+  // Open exercise detail - set both the exercise and visibility
+  const handleInfoPress = useCallback((exercise: Exercise) => {
+    setSelectedExerciseForDetail(exercise);
+    setExerciseDetailVisible(true);
+  }, []);
+
+  // Close exercise detail
+  const handleCloseDetail = useCallback(() => {
+    setExerciseDetailVisible(false);
+    // Clear the exercise after animation completes
+    setTimeout(() => {
+      setSelectedExerciseForDetail(null);
+    }, 350);
+  }, []);
+
+  // Add from detail view
+  const handleAddFromDetail = useCallback((exercise: Exercise) => {
+    onSelectExercise(exercise);
+    handleCloseDetail();
+  }, [onSelectExercise, handleCloseDetail]);
+
+  const handleAddPress = useCallback((exercise: Exercise) => {
+    onSelectExercise(exercise);
+  }, [onSelectExercise]);
 
   // Exercise Item Component
-  const renderExerciseItem = ({ item, index }: { item: Exercise; index: number }) => {
+  const renderExerciseItem = ({ item }: { item: Exercise }) => {
     const selected = isExerciseSelected(item);
     const categoryIcon = item.category ? CATEGORY_ICONS[item.category] || 'fitness' : 'fitness';
 
     return (
-      <Animated.View
-        style={{
-          opacity: 1,
-          transform: [{ translateY: 0 }],
-        }}
-      >
+      <View style={[styles.exerciseCard, selected && styles.exerciseCardSelected]}>
+        {/* Main touchable area */}
         <TouchableOpacity
-          style={[styles.exerciseCard, selected && styles.exerciseCardSelected]}
-          onPress={() => onSelectExercise(item)}
+          style={styles.exerciseMainArea}
+          onPress={() => handleAddPress(item)}
           activeOpacity={0.7}
         >
-          {/* Exercise Image/Icon */}
           <View style={styles.exerciseVisual}>
             {item.image ? (
               <Image source={{ uri: item.image }} style={styles.exerciseImage} />
@@ -306,7 +327,6 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
             )}
           </View>
 
-          {/* Exercise Info */}
           <View style={styles.exerciseContent}>
             <Text style={[styles.exerciseName, selected && styles.exerciseNameSelected]} numberOfLines={1}>
               {item.name}
@@ -327,30 +347,31 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
               )}
             </View>
           </View>
-
-          {/* Default Values */}
-          <View style={styles.exerciseStats}>
-            <View style={styles.statBadge}>
-              <Text style={styles.statValue}>{item.default_sets}</Text>
-              <Text style={styles.statLabel}>sets</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statBadge}>
-              <Text style={styles.statValue}>{item.default_reps}</Text>
-              <Text style={styles.statLabel}>reps</Text>
-            </View>
-          </View>
-
-          {/* Selection Indicator */}
-          {selected && (
-            <View style={styles.checkmarkContainer}>
-              <View style={styles.checkmarkBadge}>
-                <Ionicons name="checkmark" size={14} color="#fff" />
-              </View>
-            </View>
-          )}
         </TouchableOpacity>
-      </Animated.View>
+
+        {/* Action Buttons */}
+        <View style={styles.actionButtons}>
+          {/* Info Button */}
+          <TouchableOpacity
+            style={styles.infoButton}
+            onPress={() => handleInfoPress(item)}
+          >
+            <Ionicons name="information-circle-outline" size={24} color={theme.colors.secondaryText} />
+          </TouchableOpacity>
+
+          {/* Add Button */}
+          <TouchableOpacity
+            style={[styles.addButton, selected && styles.addButtonSelected]}
+            onPress={() => handleAddPress(item)}
+          >
+            {selected ? (
+              <Ionicons name="checkmark" size={20} color="#fff" />
+            ) : (
+              <Ionicons name="add" size={22} color="#fff" />
+            )}
+          </TouchableOpacity>
+        </View>
+      </View>
     );
   };
 
@@ -832,43 +853,55 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
-      <View style={styles.modalContainer}>
-        {/* Backdrop */}
-        <Animated.View style={[styles.backdrop, { opacity: backdropAnim }]}>
-          <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} activeOpacity={1} />
-        </Animated.View>
+    <>
+      <Modal visible={visible} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
+        <View style={styles.modalContainer}>
+          {/* Backdrop */}
+          <Animated.View style={[styles.backdrop, { opacity: backdropAnim }]}>
+            <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} activeOpacity={1} />
+          </Animated.View>
 
-        {/* Main Sheet */}
-        <Animated.View
-          style={[
-            styles.sheet,
-            {
-              transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
-            },
-          ]}
-        >
-          {showCreateForm ? (
-            <>
-              {renderHeader()}
-              {renderCreateForm()}
-            </>
-          ) : (
-            <>
-              {renderHeader()}
-              {renderTabs()}
-              {renderSearchBar()}
-              {renderCategoryFilters()}
-              {renderExtendedFilters()}
-              {renderCreateButton()}
+          {/* Main Sheet */}
+          <Animated.View
+            style={[
+              styles.sheet,
+              {
+                transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
+              },
+            ]}
+          >
+            {showCreateForm ? (
+              <>
+                {renderHeader()}
+                {renderCreateForm()}
+              </>
+            ) : (
+              <>
+                {renderHeader()}
+                {renderTabs()}
+                {renderSearchBar()}
+                {renderCategoryFilters()}
+                {renderExtendedFilters()}
+                {renderCreateButton()}
 
-              {/* Exercise List Container - This is the key fix for scrolling */}
-              <View style={styles.listContainer}>{renderContent()}</View>
-            </>
-          )}
-        </Animated.View>
-      </View>
-    </Modal>
+                <View style={styles.listContainer}>{renderContent()}</View>
+              </>
+            )}
+          </Animated.View>
+        </View>
+      </Modal>
+
+      {/* Exercise Detail Modal - Only render when visibility is true */}
+      {exerciseDetailVisible && selectedExerciseForDetail && (
+        <ExerciseDetail
+          visible={exerciseDetailVisible}
+          exercise={selectedExerciseForDetail}
+          onClose={handleCloseDetail}
+          onAddExercise={handleAddFromDetail}
+          isSelected={isExerciseSelected(selectedExerciseForDetail)}
+        />
+      )}
+    </>
   );
 };
 
@@ -889,8 +922,6 @@ const createStyles = (theme: Theme) =>
       height: MODAL_HEIGHT,
       overflow: 'hidden',
     },
-
-    // Header
     header: {
       paddingTop: 12,
       paddingHorizontal: 20,
@@ -933,8 +964,6 @@ const createStyles = (theme: Theme) =>
       justifyContent: 'center',
       alignItems: 'center',
     },
-
-    // Tabs
     tabsWrapper: {
       paddingHorizontal: 20,
       paddingVertical: 12,
@@ -965,8 +994,6 @@ const createStyles = (theme: Theme) =>
     tabTextActive: {
       color: '#fff',
     },
-
-    // Search
     searchSection: {
       flexDirection: 'row',
       paddingHorizontal: 20,
@@ -1019,8 +1046,6 @@ const createStyles = (theme: Theme) =>
       fontWeight: '700',
       color: '#fff',
     },
-
-    // Category Filters
     categoryFiltersContainer: {
       marginBottom: 8,
     },
@@ -1051,8 +1076,6 @@ const createStyles = (theme: Theme) =>
     categoryFilterTextActive: {
       color: '#fff',
     },
-
-    // Extended Filters
     extendedFiltersPanel: {
       marginHorizontal: 20,
       backgroundColor: theme.colors.surface,
@@ -1116,8 +1139,6 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.error,
       fontWeight: '500',
     },
-
-    // Create Exercise Button
     createExerciseBtn: {
       marginHorizontal: 20,
       marginBottom: 12,
@@ -1136,13 +1157,9 @@ const createStyles = (theme: Theme) =>
       fontWeight: '600',
       color: '#fff',
     },
-
-    // List Container - KEY FIX FOR SCROLLING
     listContainer: {
       flex: 1,
     },
-
-    // Exercise List
     exerciseList: {
       paddingHorizontal: 20,
       paddingTop: 8,
@@ -1151,8 +1168,6 @@ const createStyles = (theme: Theme) =>
     exerciseSeparator: {
       height: 10,
     },
-
-    // Exercise Card
     exerciseCard: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -1165,6 +1180,11 @@ const createStyles = (theme: Theme) =>
     exerciseCardSelected: {
       backgroundColor: theme.colors.primarySoft,
       borderColor: theme.colors.primary,
+    },
+    exerciseMainArea: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
     },
     exerciseVisual: {
       marginRight: 14,
@@ -1228,51 +1248,31 @@ const createStyles = (theme: Theme) =>
     categoryPillTextSelected: {
       color: theme.colors.primary,
     },
-    exerciseStats: {
+    actionButtons: {
       flexDirection: 'row',
       alignItems: 'center',
+      gap: 8,
+      marginLeft: 8,
+    },
+    infoButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
       backgroundColor: theme.colors.background,
-      borderRadius: 10,
-      paddingVertical: 8,
-      paddingHorizontal: 10,
-      marginLeft: 10,
-    },
-    statBadge: {
+      justifyContent: 'center',
       alignItems: 'center',
-      minWidth: 28,
     },
-    statValue: {
-      fontSize: 15,
-      fontWeight: '700',
-      color: theme.colors.primaryText,
-    },
-    statLabel: {
-      fontSize: 9,
-      color: theme.colors.secondaryText,
-      textTransform: 'uppercase',
-      marginTop: 1,
-    },
-    statDivider: {
-      width: 1,
-      height: 24,
-      backgroundColor: theme.colors.border,
-      marginHorizontal: 8,
-    },
-    checkmarkContainer: {
-      position: 'absolute',
-      top: 10,
-      right: 10,
-    },
-    checkmarkBadge: {
-      width: 22,
-      height: 22,
-      borderRadius: 11,
+    addButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
       backgroundColor: theme.colors.primary,
       justifyContent: 'center',
       alignItems: 'center',
     },
-
-    // States
+    addButtonSelected: {
+      backgroundColor: theme.colors.success || '#22c55e',
+    },
     loadingState: {
       flex: 1,
       justifyContent: 'center',
@@ -1354,8 +1354,6 @@ const createStyles = (theme: Theme) =>
       fontWeight: '600',
       color: '#fff',
     },
-
-    // Create Form
     createFormWrapper: {
       flex: 1,
     },
