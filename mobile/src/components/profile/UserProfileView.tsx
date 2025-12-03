@@ -52,7 +52,7 @@ export function UserProfileView({ username, showBack = true }: UserProfileViewPr
   const contentOpacity = useMemo(() => new Animated.Value(0), []);
 
   const isMe = currentUser?.username === username;
-  const isCreator = profileUser?.profile?.is_verified || (programs.length > 0);
+  const isCreator = false;
 
   useEffect(() => {
     loadData();
