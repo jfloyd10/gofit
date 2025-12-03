@@ -51,6 +51,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   const [showSchemeSelect, setShowSchemeSelect] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName, setEditName] = useState(block.block_name || '');
+  const [isAddingNote, setIsAddingNote] = useState(false);
 
   const handleDelete = () => {
     Alert.alert(
@@ -240,17 +241,34 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
             </View>
           )}
 
-          {/* Block Notes */}
-          <TextInput
-            style={styles.notesInput}
-            value={block.block_notes || ''}
-            onChangeText={(text) =>
-              updateBlock(weekTempId, sessionTempId, block.tempId, { block_notes: text || null })
-            }
-            placeholder="Add notes for this block..."
-            placeholderTextColor={theme.colors.secondaryText}
-            multiline
-          />
+          {/* Block Notes*/}
+          {(block.block_notes || isAddingNote) ? (
+            <TextInput
+              style={styles.notesInput}
+              value={block.block_notes || ''}
+              onChangeText={(text) =>
+                updateBlock(weekTempId, sessionTempId, block.tempId, { block_notes: text || null })
+              }
+              placeholder="Add notes for this block..."
+              placeholderTextColor={theme.colors.secondaryText}
+              multiline
+              autoFocus={isAddingNote}
+              onBlur={() => {
+                // If the user clears the notes and leaves, revert to the button
+                if (!block.block_notes?.trim()) {
+                  setIsAddingNote(false);
+                }
+              }}
+            />
+          ) : (
+            <TouchableOpacity 
+              style={styles.addNoteButton}
+              onPress={() => setIsAddingNote(true)}
+            >
+              <Ionicons name="chatbox-outline" size={14} color={theme.colors.secondaryText} />
+              <Text style={styles.addNoteText}>Click to add Note</Text>
+            </TouchableOpacity>
+          )}
 
           {/* Activities */}
           {block.activities.map((activity, activityIndex) => (
@@ -448,6 +466,21 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.primaryText,
       marginBottom: theme.spacing(3),
       minHeight: 40,
+    },
+    // New styles for the "Click to add" button
+    addNoteButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      gap: theme.spacing(2),
+      marginBottom: theme.spacing(3),
+      paddingVertical: theme.spacing(1),
+      paddingHorizontal: theme.spacing(1),
+    },
+    addNoteText: {
+      fontSize: theme.typography.fontSizeXs,
+      color: theme.colors.secondaryText,
+      fontStyle: 'italic',
     },
 
     // Add Exercise

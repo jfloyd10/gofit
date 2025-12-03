@@ -377,6 +377,9 @@ export function createEmptyWeek(weekNumber: number): BuilderWeek {
  * Create a new empty session
  */
 export function createEmptySession(dayOrdering: number = 0): BuilderSession {
+  const defaultBlock = createEmptyBlock(0);
+  defaultBlock.block_name = 'Main';
+
   return {
     tempId: generateTempId(),
     title: 'New Session',
@@ -384,7 +387,7 @@ export function createEmptySession(dayOrdering: number = 0): BuilderSession {
     focus: 'Lift',
     day_of_week: 'Monday',
     day_ordering: dayOrdering,
-    blocks: [],
+    blocks: [defaultBlock],
   };
 }
 
