@@ -1,5 +1,4 @@
 // src/components/program-builder/ExerciseLibrary.tsx
-// World-class Exercise Library with "Athletic Premium" design aesthetic
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
@@ -17,13 +16,9 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
-  Keyboard,
-  LayoutAnimation,
-  UIManager,
+  StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme, Theme } from '../../theme';
 import { useAuth } from '../../providers/AuthProvider';
@@ -32,46 +27,8 @@ import { Exercise, EXERCISE_CATEGORIES, MUSCLE_GROUPS } from '../../lib/types/pr
 import { PrimaryButton } from '../ui/PrimaryButton';
 import { TextField } from '../ui/TextField';
 
-// Enable LayoutAnimation for Android
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
-
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
-
-// Category icons mapping for visual appeal
-const CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
-  'Barbell': 'barbell',
-  'Dumbbell': 'fitness',
-  'Cable': 'git-merge',
-  'Machine': 'cog',
-  'Bodyweight': 'body',
-  'Kettlebell': 'flame',
-  'Cardio': 'heart',
-  'Stretching': 'leaf',
-  'Plyometric': 'flash',
-  'Olympic': 'trophy',
-  'Resistance Band': 'pulse',
-  'Medicine Ball': 'football',
-};
-
-// Muscle group icons
-const MUSCLE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
-  'Chest': 'shield-half',
-  'Back': 'arrow-undo',
-  'Shoulders': 'arrow-up-circle',
-  'Biceps': 'fitness',
-  'Triceps': 'fitness',
-  'Legs': 'walk',
-  'Quadriceps': 'walk',
-  'Hamstrings': 'walk',
-  'Glutes': 'accessibility',
-  'Core': 'radio-button-on',
-  'Abs': 'radio-button-on',
-  'Calves': 'footsteps',
-  'Forearms': 'hand-left',
-  'Full Body': 'body',
-};
+const MODAL_HEIGHT = SCREEN_HEIGHT * 0.92;
 
 interface ExerciseLibraryProps {
   visible: boolean;
@@ -89,268 +46,35 @@ interface FilterState {
   muscleGroup: string | null;
 }
 
-// Animated Exercise Card Component
-const AnimatedExerciseCard: React.FC<{
-  exercise: Exercise;
-  index: number;
-  isSelected: boolean;
-  onPress: () => void;
-  onLongPress: () => void;
-  theme: Theme;
-  styles: ReturnType<typeof createStyles>;
-}> = ({ exercise, index, isSelected, onPress, onLongPress, theme, styles }) => {
-  const scaleAnim = useRef(new Animated.Value(0)).current;
-  const pressAnim = useRef(new Animated.Value(1)).current;
-  const checkmarkAnim = useRef(new Animated.Value(isSelected ? 1 : 0)).current;
-
-  useEffect(() => {
-    // Staggered entrance animation
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      delay: index * 50,
-      tension: 100,
-      friction: 12,
-      useNativeDriver: true,
-    }).start();
-  }, []);
-
-  useEffect(() => {
-    Animated.spring(checkmarkAnim, {
-      toValue: isSelected ? 1 : 0,
-      tension: 120,
-      friction: 8,
-      useNativeDriver: true,
-    }).start();
-  }, [isSelected]);
-
-  const handlePressIn = () => {
-    Animated.spring(pressAnim, {
-      toValue: 0.97,
-      tension: 300,
-      friction: 10,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  const handlePressOut = () => {
-    Animated.spring(pressAnim, {
-      toValue: 1,
-      tension: 200,
-      friction: 8,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  const handlePress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onPress();
-  };
-
-  const handleLongPress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    onLongPress();
-  };
-
-  return (
-    <Animated.View
-      style={[
-        {
-          opacity: scaleAnim,
-          transform: [
-            { scale: Animated.multiply(scaleAnim, pressAnim) },
-            {
-              translateY: scaleAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [20, 0],
-              }),
-            },
-          ],
-        },
-      ]}
-    >
-      <Pressable
-        onPress={handlePress}
-        onLongPress={handleLongPress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        style={({ pressed }) => [
-          styles.exerciseCard,
-          isSelected && styles.exerciseCardSelected,
-        ]}
-      >
-        {/* Exercise Image with Gradient Overlay */}
-        <View style={styles.exerciseImageWrapper}>
-          {exercise.image ? (
-            <>
-              <Image 
-                source={{ uri: exercise.image }} 
-                style={styles.exerciseImage}
-                resizeMode="cover"
-              />
-              <LinearGradient
-                colors={['transparent', 'rgba(0,0,0,0.3)']}
-                style={styles.imageGradient}
-              />
-            </>
-          ) : (
-            <View style={styles.exercisePlaceholder}>
-              <LinearGradient
-                colors={[
-                  isSelected ? theme.colors.primary : theme.colors.surface,
-                  isSelected ? theme.colors.primarySoft : theme.colors.background,
-                ]}
-                style={StyleSheet.absoluteFill}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              />
-              <Ionicons 
-                name={CATEGORY_ICONS[exercise.category || ''] || 'barbell-outline'} 
-                size={28} 
-                color={isSelected ? theme.colors.primary : theme.colors.secondaryText} 
-              />
-            </View>
-          )}
-          
-          {/* Category Badge */}
-          {exercise.category && (
-            <View style={styles.categoryBadge}>
-              <Ionicons 
-                name={CATEGORY_ICONS[exercise.category] || 'ellipse'} 
-                size={10} 
-                color={theme.colors.surface} 
-              />
-              <Text style={styles.categoryBadgeText}>{exercise.category}</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Exercise Info */}
-        <View style={styles.exerciseContent}>
-          <View style={styles.exerciseHeader}>
-            <Text style={styles.exerciseName} numberOfLines={2}>
-              {exercise.name}
-            </Text>
-            
-            {/* Selection Indicator */}
-            <Animated.View
-              style={[
-                styles.selectionIndicator,
-                {
-                  opacity: checkmarkAnim,
-                  transform: [
-                    {
-                      scale: checkmarkAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0.5, 1],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            >
-              <View style={styles.checkmarkCircle}>
-                <Ionicons name="checkmark" size={14} color={theme.colors.surface} />
-              </View>
-            </Animated.View>
-          </View>
-
-          {/* Muscle Groups */}
-          {exercise.muscle_groups && (
-            <View style={styles.muscleTagsRow}>
-              {exercise.muscle_groups.split(',').slice(0, 2).map((muscle, idx) => (
-                <View key={idx} style={styles.muscleTag}>
-                  <Ionicons 
-                    name={MUSCLE_ICONS[muscle.trim()] || 'ellipse'} 
-                    size={10} 
-                    color={theme.colors.primary} 
-                  />
-                  <Text style={styles.muscleTagText}>{muscle.trim()}</Text>
-                </View>
-              ))}
-              {exercise.muscle_groups.split(',').length > 2 && (
-                <Text style={styles.moreMuscles}>
-                  +{exercise.muscle_groups.split(',').length - 2}
-                </Text>
-              )}
-            </View>
-          )}
-
-          {/* Defaults Row */}
-          <View style={styles.defaultsRow}>
-            <View style={styles.defaultItem}>
-              <Text style={styles.defaultValue}>{exercise.default_sets}</Text>
-              <Text style={styles.defaultLabel}>Sets</Text>
-            </View>
-            <View style={styles.defaultDivider} />
-            <View style={styles.defaultItem}>
-              <Text style={styles.defaultValue}>{exercise.default_reps}</Text>
-              <Text style={styles.defaultLabel}>Reps</Text>
-            </View>
-            <View style={styles.defaultDivider} />
-            <View style={styles.defaultItem}>
-              <Text style={styles.defaultValue}>{exercise.default_rest}s</Text>
-              <Text style={styles.defaultLabel}>Rest</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Quick Add Button */}
-        <TouchableOpacity 
-          style={[
-            styles.quickAddButton,
-            isSelected && styles.quickAddButtonSelected,
-          ]}
-          onPress={handlePress}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons 
-            name={isSelected ? "checkmark" : "add"} 
-            size={20} 
-            color={isSelected ? theme.colors.surface : theme.colors.primary} 
-          />
-        </TouchableOpacity>
-      </Pressable>
-    </Animated.View>
-  );
+// Category icons mapping for visual appeal
+const CATEGORY_ICONS: Record<string, string> = {
+  'Barbell': 'barbell',
+  'Dumbbell': 'fitness',
+  'Machine': 'cog',
+  'Cable': 'git-pull-request',
+  'Bodyweight': 'body',
+  'Cardio': 'heart',
+  'Kettlebell': 'bowling-ball',
+  'Band': 'link',
+  'Stretching': 'expand',
 };
 
-// Animated Category Chip Component
-const CategoryChip: React.FC<{
-  category: string;
-  isActive: boolean;
-  onPress: () => void;
-  theme: Theme;
-  styles: ReturnType<typeof createStyles>;
-}> = ({ category, isActive, onPress, theme, styles }) => {
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-
-  const handlePress = () => {
-    Haptics.selectionAsync();
-    Animated.sequence([
-      Animated.spring(scaleAnim, { toValue: 0.9, tension: 300, friction: 10, useNativeDriver: true }),
-      Animated.spring(scaleAnim, { toValue: 1, tension: 200, friction: 8, useNativeDriver: true }),
-    ]).start();
-    onPress();
-  };
-
-  return (
-    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-      <TouchableOpacity
-        style={[styles.categoryChip, isActive && styles.categoryChipActive]}
-        onPress={handlePress}
-        activeOpacity={0.8}
-      >
-        <Ionicons 
-          name={CATEGORY_ICONS[category] || 'ellipse'} 
-          size={14} 
-          color={isActive ? theme.colors.surface : theme.colors.secondaryText} 
-        />
-        <Text style={[styles.categoryChipText, isActive && styles.categoryChipTextActive]}>
-          {category}
-        </Text>
-      </TouchableOpacity>
-    </Animated.View>
-  );
+// Muscle group emoji mapping
+const MUSCLE_ICONS: Record<string, string> = {
+  'Chest': '💪',
+  'Back': '🔙',
+  'Shoulders': '🎯',
+  'Biceps': '💪',
+  'Triceps': '💪',
+  'Legs': '🦵',
+  'Quadriceps': '🦵',
+  'Hamstrings': '🦵',
+  'Glutes': '🍑',
+  'Core': '⚡',
+  'Abs': '⚡',
+  'Calves': '🦶',
+  'Forearms': '💪',
+  'Traps': '🎯',
 };
 
 export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
@@ -376,8 +100,7 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
   });
   const [showFilters, setShowFilters] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [expandedExercise, setExpandedExercise] = useState<Exercise | null>(null);
-  const [searchFocused, setSearchFocused] = useState(false);
+  const searchInputRef = useRef<TextInput>(null);
 
   // Custom exercise form state
   const [customExercise, setCustomExercise] = useState({
@@ -392,88 +115,66 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
   });
   const [isCreating, setIsCreating] = useState(false);
 
-  // Refs
-  const searchInputRef = useRef<TextInput>(null);
-  const listRef = useRef<FlatList>(null);
-
   // Animations
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
-  const searchBarAnim = useRef(new Animated.Value(0)).current;
-  const contentAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
+  const filterHeightAnim = useRef(new Animated.Value(0)).current;
 
-  // Search debounce
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
+  // Animation effects
   useEffect(() => {
     if (visible) {
-      // Staggered entrance animations
       Animated.parallel([
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          useNativeDriver: true,
+          tension: 80,
+          friction: 12,
+        }),
         Animated.timing(backdropAnim, {
           toValue: 1,
           duration: 300,
           useNativeDriver: true,
         }),
-        Animated.spring(slideAnim, {
-          toValue: 0,
-          tension: 65,
-          friction: 11,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        // Content fade in after modal slides
-        Animated.spring(contentAnim, {
+        Animated.spring(scaleAnim, {
           toValue: 1,
-          tension: 100,
-          friction: 12,
           useNativeDriver: true,
-        }).start();
-      });
+          tension: 80,
+          friction: 12,
+        }),
+      ]).start();
       fetchExercises();
     } else {
-      // Exit animations
       Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: SCREEN_HEIGHT,
+          duration: 280,
+          useNativeDriver: true,
+        }),
         Animated.timing(backdropAnim, {
           toValue: 0,
           duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: SCREEN_HEIGHT,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-        Animated.timing(contentAnim, {
-          toValue: 0,
-          duration: 150,
           useNativeDriver: true,
         }),
       ]).start();
     }
   }, [visible]);
 
+  // Filter panel animation
+  useEffect(() => {
+    Animated.spring(filterHeightAnim, {
+      toValue: showFilters ? 1 : 0,
+      useNativeDriver: false,
+      tension: 100,
+      friction: 15,
+    }).start();
+  }, [showFilters]);
+
   useEffect(() => {
     if (visible) {
       fetchExercises();
     }
-  }, [activeTab, filters.category, filters.muscleGroup]);
-
-  // Debounced search
-  useEffect(() => {
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-    searchTimeoutRef.current = setTimeout(() => {
-      if (visible) {
-        fetchExercises();
-      }
-    }, 300);
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
-  }, [filters.search]);
+  }, [activeTab, filters]);
 
   const fetchExercises = useCallback(async () => {
     if (!accessToken) return;
@@ -508,35 +209,19 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
   }, []);
 
   const handleCategorySelect = useCallback((category: string | null) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setFilters((prev) => ({ ...prev, category }));
   }, []);
 
   const handleMuscleGroupSelect = useCallback((muscleGroup: string | null) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setFilters((prev) => ({ ...prev, muscleGroup }));
   }, []);
 
   const clearFilters = useCallback(() => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setFilters({ search: '', category: null, muscleGroup: null });
   }, []);
 
-  const hasActiveFilters = filters.category || filters.muscleGroup || filters.search;
-
-  const handleTabChange = (tab: TabType) => {
-    Haptics.selectionAsync();
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setActiveTab(tab);
-  };
-
-  const toggleFilters = () => {
-    Haptics.selectionAsync();
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setShowFilters(!showFilters);
-    Keyboard.dismiss();
-  };
+  const hasActiveFilters = filters.category || filters.muscleGroup;
+  const activeFilterCount = [filters.category, filters.muscleGroup].filter(Boolean).length;
 
   const handleCreateCustomExercise = async () => {
     if (!accessToken || !customExercise.name.trim()) return;
@@ -557,7 +242,6 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
         accessToken
       );
 
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setExercises((prev) => [newExercise, ...prev]);
       setShowCreateForm(false);
       setCustomExercise({
@@ -570,10 +254,10 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
         default_reps: 10,
         default_rest: 60,
       });
+
       onSelectExercise(newExercise);
     } catch (err) {
       console.error('Failed to create exercise:', err);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       setIsCreating(false);
     }
@@ -583,807 +267,652 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
     return selectedExercises.some((e) => e.id === exercise.id);
   };
 
-  const renderExerciseItem = ({ item, index }: { item: Exercise; index: number }) => (
-    <AnimatedExerciseCard
-      exercise={item}
-      index={index}
-      isSelected={isExerciseSelected(item)}
-      onPress={() => onSelectExercise(item)}
-      onLongPress={() => setExpandedExercise(item)}
-      theme={theme}
-      styles={styles}
-    />
-  );
+  // Exercise Item Component
+  const renderExerciseItem = ({ item, index }: { item: Exercise; index: number }) => {
+    const selected = isExerciseSelected(item);
+    const categoryIcon = item.category ? CATEGORY_ICONS[item.category] || 'fitness' : 'fitness';
 
-  const renderCategoryFilters = () => (
-    <Animated.View style={{ opacity: contentAnim }}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.categoryScrollContent}
-        style={styles.categoryScroll}
+    return (
+      <Animated.View
+        style={{
+          opacity: 1,
+          transform: [{ translateY: 0 }],
+        }}
       >
-        {/* All option */}
-        <CategoryChip
-          category="All"
-          isActive={!filters.category}
-          onPress={() => handleCategorySelect(null)}
-          theme={theme}
-          styles={styles}
-        />
-        {EXERCISE_CATEGORIES.map((category) => (
-          <CategoryChip
-            key={category}
-            category={category}
-            isActive={filters.category === category}
-            onPress={() =>
-              handleCategorySelect(filters.category === category ? null : category)
-            }
-            theme={theme}
-            styles={styles}
-          />
-        ))}
-      </ScrollView>
-    </Animated.View>
-  );
-
-  const renderMuscleGroupFilters = () => (
-    <Animated.View
-      style={[
-        styles.muscleFiltersContainer,
-        { opacity: contentAnim },
-      ]}
-    >
-      <View style={styles.muscleFiltersHeader}>
-        <Text style={styles.muscleFiltersTitle}>Target Muscles</Text>
-        {filters.muscleGroup && (
-          <TouchableOpacity onPress={() => handleMuscleGroupSelect(null)}>
-            <Text style={styles.clearMuscleText}>Clear</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-      <View style={styles.muscleGrid}>
-        {MUSCLE_GROUPS.map((muscle) => (
-          <TouchableOpacity
-            key={muscle}
-            style={[
-              styles.muscleChip,
-              filters.muscleGroup === muscle && styles.muscleChipActive,
-            ]}
-            onPress={() => {
-              Haptics.selectionAsync();
-              handleMuscleGroupSelect(
-                filters.muscleGroup === muscle ? null : muscle
-              );
-            }}
-          >
-            <Ionicons
-              name={MUSCLE_ICONS[muscle] || 'ellipse'}
-              size={14}
-              color={
-                filters.muscleGroup === muscle
-                  ? theme.colors.surface
-                  : theme.colors.secondaryText
-              }
-            />
-            <Text
-              style={[
-                styles.muscleChipText,
-                filters.muscleGroup === muscle && styles.muscleChipTextActive,
-              ]}
-            >
-              {muscle}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    </Animated.View>
-  );
-
-  const renderHeader = () => (
-    <View style={styles.stickyHeader}>
-      {/* Search Bar */}
-      <View style={styles.searchSection}>
-        <View
-          style={[
-            styles.searchContainer,
-            searchFocused && styles.searchContainerFocused,
-          ]}
-        >
-          <Ionicons
-            name="search"
-            size={20}
-            color={searchFocused ? theme.colors.primary : theme.colors.secondaryText}
-          />
-          <TextInput
-            ref={searchInputRef}
-            style={styles.searchInput}
-            placeholder="Search exercises..."
-            placeholderTextColor={theme.colors.secondaryText}
-            value={filters.search}
-            onChangeText={handleSearchChange}
-            onFocus={() => setSearchFocused(true)}
-            onBlur={() => setSearchFocused(false)}
-            returnKeyType="search"
-          />
-          {filters.search.length > 0 && (
-            <TouchableOpacity
-              onPress={() => {
-                Haptics.selectionAsync();
-                handleSearchChange('');
-              }}
-            >
-              <Ionicons
-                name="close-circle"
-                size={18}
-                color={theme.colors.secondaryText}
-              />
-            </TouchableOpacity>
-          )}
-        </View>
-
         <TouchableOpacity
-          style={[
-            styles.filterToggle,
-            showFilters && styles.filterToggleActive,
-          ]}
-          onPress={toggleFilters}
+          style={[styles.exerciseCard, selected && styles.exerciseCardSelected]}
+          onPress={() => onSelectExercise(item)}
+          activeOpacity={0.7}
         >
-          <Ionicons
-            name={showFilters ? 'options' : 'options-outline'}
-            size={20}
-            color={
-              showFilters || hasActiveFilters
-                ? theme.colors.primary
-                : theme.colors.secondaryText
-            }
-          />
-          {hasActiveFilters && !showFilters && (
-            <View style={styles.filterBadge}>
-              <Text style={styles.filterBadgeText}>
-                {[filters.category, filters.muscleGroup].filter(Boolean).length}
-              </Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      {/* Category Filters */}
-      {renderCategoryFilters()}
-
-      {/* Extended Muscle Filters */}
-      {showFilters && renderMuscleGroupFilters()}
-
-      {/* Active Filters Summary */}
-      {hasActiveFilters && (
-        <View style={styles.activeFiltersBar}>
-          <Text style={styles.activeFiltersText}>
-            {[filters.category, filters.muscleGroup].filter(Boolean).join(' · ')}
-            {filters.search && ` · "${filters.search}"`}
-          </Text>
-          <TouchableOpacity onPress={clearFilters} style={styles.clearAllButton}>
-            <Ionicons name="close" size={14} color={theme.colors.error} />
-            <Text style={styles.clearAllText}>Clear All</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Create Custom Button (Custom Tab) */}
-      {activeTab === 'custom' && !showCreateForm && (
-        <TouchableOpacity
-          style={styles.createCustomBanner}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            setShowCreateForm(true);
-          }}
-        >
-          <LinearGradient
-            colors={[theme.colors.primary, theme.colors.primarySoft]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={StyleSheet.absoluteFill}
-          />
-          <View style={styles.createCustomContent}>
-            <View style={styles.createCustomIcon}>
-              <Ionicons name="add" size={24} color={theme.colors.surface} />
-            </View>
-            <View style={styles.createCustomText}>
-              <Text style={styles.createCustomTitle}>Create Exercise</Text>
-              <Text style={styles.createCustomSubtitle}>
-                Add your own custom exercise
-              </Text>
-            </View>
-            <Ionicons
-              name="chevron-forward"
-              size={20}
-              color={theme.colors.surface}
-            />
+          {/* Exercise Image/Icon */}
+          <View style={styles.exerciseVisual}>
+            {item.image ? (
+              <Image source={{ uri: item.image }} style={styles.exerciseImage} />
+            ) : (
+              <LinearGradient
+                colors={
+                  selected
+                    ? [theme.colors.primary, theme.colors.primaryDark || theme.colors.primary]
+                    : [theme.colors.surface, theme.colors.background]
+                }
+                style={styles.exerciseIconContainer}
+              >
+                <Ionicons
+                  name={categoryIcon as any}
+                  size={26}
+                  color={selected ? '#fff' : theme.colors.secondaryText}
+                />
+              </LinearGradient>
+            )}
           </View>
-        </TouchableOpacity>
-      )}
 
-      {/* Results Count */}
-      {!showCreateForm && !isLoading && exercises.length > 0 && (
-        <View style={styles.resultsBar}>
-          <Text style={styles.resultsText}>
-            {exercises.length} exercise{exercises.length !== 1 ? 's' : ''} found
+          {/* Exercise Info */}
+          <View style={styles.exerciseContent}>
+            <Text style={[styles.exerciseName, selected && styles.exerciseNameSelected]} numberOfLines={1}>
+              {item.name}
+            </Text>
+
+            <View style={styles.exerciseMetaRow}>
+              {item.muscle_groups && (
+                <View style={styles.muscleTag}>
+                  <Text style={styles.muscleTagText}>{item.muscle_groups}</Text>
+                </View>
+              )}
+              {item.category && (
+                <View style={[styles.categoryPill, selected && styles.categoryPillSelected]}>
+                  <Text style={[styles.categoryPillText, selected && styles.categoryPillTextSelected]}>
+                    {item.category}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* Default Values */}
+          <View style={styles.exerciseStats}>
+            <View style={styles.statBadge}>
+              <Text style={styles.statValue}>{item.default_sets}</Text>
+              <Text style={styles.statLabel}>sets</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statBadge}>
+              <Text style={styles.statValue}>{item.default_reps}</Text>
+              <Text style={styles.statLabel}>reps</Text>
+            </View>
+          </View>
+
+          {/* Selection Indicator */}
+          {selected && (
+            <View style={styles.checkmarkContainer}>
+              <View style={styles.checkmarkBadge}>
+                <Ionicons name="checkmark" size={14} color="#fff" />
+              </View>
+            </View>
+          )}
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  };
+
+  // Header Component
+  const renderHeader = () => (
+    <View style={styles.header}>
+      <View style={styles.headerHandle} />
+
+      <View style={styles.headerRow}>
+        <View style={styles.headerTitleSection}>
+          <Text style={styles.headerTitle}>Exercise Library</Text>
+          <Text style={styles.headerSubtitle}>
+            {exercises.length} exercises available
           </Text>
         </View>
-      )}
+
+        <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
+          <Ionicons name="close" size={22} color={theme.colors.primaryText} />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
+  // Tabs Component
+  const renderTabs = () => (
+    <View style={styles.tabsWrapper}>
+      <View style={styles.tabsContainer}>
+        <TouchableOpacity
+          style={[styles.tabBtn, activeTab === 'official' && styles.tabBtnActive]}
+          onPress={() => setActiveTab('official')}
+        >
+          <Ionicons
+            name="shield-checkmark"
+            size={16}
+            color={activeTab === 'official' ? '#fff' : theme.colors.secondaryText}
+          />
+          <Text style={[styles.tabText, activeTab === 'official' && styles.tabTextActive]}>
+            Official
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tabBtn, activeTab === 'custom' && styles.tabBtnActive]}
+          onPress={() => setActiveTab('custom')}
+        >
+          <Ionicons
+            name="sparkles"
+            size={16}
+            color={activeTab === 'custom' ? '#fff' : theme.colors.secondaryText}
+          />
+          <Text style={[styles.tabText, activeTab === 'custom' && styles.tabTextActive]}>
+            My Exercises
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  // Search Bar Component
+  const renderSearchBar = () => (
+    <View style={styles.searchSection}>
+      <View style={styles.searchBar}>
+        <Ionicons name="search" size={18} color={theme.colors.secondaryText} />
+        <TextInput
+          ref={searchInputRef}
+          style={styles.searchInput}
+          placeholder="Search by name, muscle, equipment..."
+          placeholderTextColor={theme.colors.secondaryText}
+          value={filters.search}
+          onChangeText={handleSearchChange}
+          returnKeyType="search"
+        />
+        {filters.search.length > 0 && (
+          <TouchableOpacity onPress={() => handleSearchChange('')} style={styles.clearSearchBtn}>
+            <Ionicons name="close-circle" size={18} color={theme.colors.secondaryText} />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      <TouchableOpacity
+        style={[styles.filterToggleBtn, hasActiveFilters && styles.filterToggleBtnActive]}
+        onPress={() => setShowFilters(!showFilters)}
+      >
+        <Ionicons
+          name="options-outline"
+          size={18}
+          color={hasActiveFilters ? '#fff' : theme.colors.secondaryText}
+        />
+        {activeFilterCount > 0 && (
+          <View style={styles.filterBadge}>
+            <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+    </View>
+  );
+
+  // Category Filter Pills
+  const renderCategoryFilters = () => (
+    <View style={styles.categoryFiltersContainer}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.categoryFiltersContent}
+      >
+        <TouchableOpacity
+          style={[styles.categoryFilterPill, !filters.category && styles.categoryFilterPillActive]}
+          onPress={() => handleCategorySelect(null)}
+        >
+          <Text style={[styles.categoryFilterText, !filters.category && styles.categoryFilterTextActive]}>
+            All
+          </Text>
+        </TouchableOpacity>
+
+        {EXERCISE_CATEGORIES.map((category) => {
+          const isActive = filters.category === category;
+          const iconName = CATEGORY_ICONS[category] || 'fitness';
+
+          return (
+            <TouchableOpacity
+              key={category}
+              style={[styles.categoryFilterPill, isActive && styles.categoryFilterPillActive]}
+              onPress={() => handleCategorySelect(isActive ? null : category)}
+            >
+              <Ionicons
+                name={iconName as any}
+                size={14}
+                color={isActive ? '#fff' : theme.colors.secondaryText}
+                style={styles.categoryFilterIcon}
+              />
+              <Text style={[styles.categoryFilterText, isActive && styles.categoryFilterTextActive]}>
+                {category}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+
+  // Extended Filters Panel
+  const renderExtendedFilters = () => {
+    const filterHeight = filterHeightAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, 180],
+    });
+
+    return (
+      <Animated.View style={[styles.extendedFiltersPanel, { height: filterHeight, opacity: filterHeightAnim }]}>
+        <View style={styles.muscleFilterSection}>
+          <Text style={styles.filterSectionLabel}>Target Muscles</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={styles.muscleChipsRow}>
+              {MUSCLE_GROUPS.map((muscle) => {
+                const isActive = filters.muscleGroup === muscle;
+                const emoji = MUSCLE_ICONS[muscle] || '💪';
+
+                return (
+                  <TouchableOpacity
+                    key={muscle}
+                    style={[styles.muscleChip, isActive && styles.muscleChipActive]}
+                    onPress={() => handleMuscleGroupSelect(isActive ? null : muscle)}
+                  >
+                    <Text style={styles.muscleChipEmoji}>{emoji}</Text>
+                    <Text style={[styles.muscleChipText, isActive && styles.muscleChipTextActive]}>
+                      {muscle}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </ScrollView>
+        </View>
+
+        {hasActiveFilters && (
+          <TouchableOpacity style={styles.clearAllFiltersBtn} onPress={clearFilters}>
+            <Ionicons name="refresh" size={14} color={theme.colors.error} />
+            <Text style={styles.clearAllFiltersText}>Clear All Filters</Text>
+          </TouchableOpacity>
+        )}
+      </Animated.View>
+    );
+  };
+
+  // Create Custom Exercise Button
+  const renderCreateButton = () => {
+    if (activeTab !== 'custom') return null;
+
+    return (
+      <TouchableOpacity style={styles.createExerciseBtn} onPress={() => setShowCreateForm(true)}>
+        <LinearGradient
+          colors={[theme.colors.primary, theme.colors.primaryDark || theme.colors.primary]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.createExerciseBtnGradient}
+        >
+          <Ionicons name="add" size={20} color="#fff" />
+          <Text style={styles.createExerciseBtnText}>Create New Exercise</Text>
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  };
+
+  // Empty State
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
       <View style={styles.emptyIconContainer}>
-        <LinearGradient
-          colors={[theme.colors.primarySoft, 'transparent']}
-          style={StyleSheet.absoluteFill}
-        />
         <Ionicons
-          name={activeTab === 'custom' ? 'create-outline' : 'barbell-outline'}
+          name={activeTab === 'custom' ? 'sparkles-outline' : 'barbell-outline'}
           size={48}
           color={theme.colors.secondaryText}
         />
       </View>
       <Text style={styles.emptyTitle}>
-        {activeTab === 'custom'
-          ? 'No Custom Exercises'
-          : hasActiveFilters
-          ? 'No Matches Found'
-          : 'Exercise Library Empty'}
+        {activeTab === 'custom' ? 'No Custom Exercises Yet' : 'No Exercises Found'}
       </Text>
       <Text style={styles.emptySubtitle}>
         {activeTab === 'custom'
-          ? 'Create your first custom exercise to get started'
-          : hasActiveFilters
-          ? 'Try adjusting your filters or search terms'
-          : 'No exercises available at this time'}
+          ? 'Create your first custom exercise to see it here'
+          : 'Try adjusting your search or filters'}
       </Text>
       {activeTab === 'custom' && (
-        <TouchableOpacity
-          style={styles.emptyActionButton}
-          onPress={() => setShowCreateForm(true)}
-        >
-          <Ionicons name="add" size={18} color={theme.colors.surface} />
-          <Text style={styles.emptyActionText}>Create Exercise</Text>
-        </TouchableOpacity>
-      )}
-      {hasActiveFilters && activeTab !== 'custom' && (
-        <TouchableOpacity style={styles.emptyActionButton} onPress={clearFilters}>
-          <Ionicons name="refresh" size={18} color={theme.colors.surface} />
-          <Text style={styles.emptyActionText}>Clear Filters</Text>
+        <TouchableOpacity style={styles.emptyCreateBtn} onPress={() => setShowCreateForm(true)}>
+          <Ionicons name="add-circle" size={18} color="#fff" />
+          <Text style={styles.emptyCreateBtnText}>Create Exercise</Text>
         </TouchableOpacity>
       )}
     </View>
   );
 
+  // Loading State
+  const renderLoadingState = () => (
+    <View style={styles.loadingState}>
+      <ActivityIndicator size="large" color={theme.colors.primary} />
+      <Text style={styles.loadingText}>Loading exercises...</Text>
+    </View>
+  );
+
+  // Error State
+  const renderErrorState = () => (
+    <View style={styles.errorState}>
+      <Ionicons name="cloud-offline-outline" size={48} color={theme.colors.error} />
+      <Text style={styles.errorTitle}>Connection Error</Text>
+      <Text style={styles.errorSubtitle}>{error}</Text>
+      <TouchableOpacity style={styles.retryBtn} onPress={fetchExercises}>
+        <Text style={styles.retryBtnText}>Try Again</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  // Create Form
   const renderCreateForm = () => (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.createFormWrapper}
     >
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={styles.createFormScroll}
-      >
-        {/* Form Header */}
-        <View style={styles.formHeader}>
-          <TouchableOpacity
-            onPress={() => {
-              Haptics.selectionAsync();
-              setShowCreateForm(false);
-            }}
-            style={styles.formBackButton}
-          >
-            <Ionicons name="arrow-back" size={24} color={theme.colors.primaryText} />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.createFormScroll}>
+        <View style={styles.createFormHeader}>
+          <View>
+            <Text style={styles.createFormTitle}>New Exercise</Text>
+            <Text style={styles.createFormSubtitle}>Add to your personal library</Text>
+          </View>
+          <TouchableOpacity style={styles.createFormCloseBtn} onPress={() => setShowCreateForm(false)}>
+            <Ionicons name="close" size={22} color={theme.colors.primaryText} />
           </TouchableOpacity>
-          <Text style={styles.formTitle}>New Exercise</Text>
-          <View style={{ width: 40 }} />
         </View>
 
-        {/* Form Content */}
-        <View style={styles.formContent}>
-          <TextField
-            label="Exercise Name"
-            placeholder="e.g., Bulgarian Split Squat"
-            value={customExercise.name}
-            onChangeText={(text) =>
-              setCustomExercise((prev) => ({ ...prev, name: text }))
-            }
-          />
+        <View style={styles.formSection}>
+          <Text style={styles.formLabel}>Exercise Name *</Text>
+          <View style={styles.formInputContainer}>
+            <TextInput
+              style={styles.formInput}
+              placeholder="e.g., Bulgarian Split Squat"
+              placeholderTextColor={theme.colors.secondaryText}
+              value={customExercise.name}
+              onChangeText={(text) => setCustomExercise((prev) => ({ ...prev, name: text }))}
+            />
+          </View>
+        </View>
 
-          <TextField
-            label="Description"
-            placeholder="Brief description of the exercise..."
-            value={customExercise.description}
-            onChangeText={(text) =>
-              setCustomExercise((prev) => ({ ...prev, description: text }))
-            }
-            multiline
-            numberOfLines={3}
-          />
+        <View style={styles.formSection}>
+          <Text style={styles.formLabel}>Description</Text>
+          <View style={[styles.formInputContainer, styles.formInputMultiline]}>
+            <TextInput
+              style={[styles.formInput, styles.formInputArea]}
+              placeholder="Brief description of the exercise..."
+              placeholderTextColor={theme.colors.secondaryText}
+              value={customExercise.description}
+              onChangeText={(text) => setCustomExercise((prev) => ({ ...prev, description: text }))}
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+            />
+          </View>
+        </View>
 
-          <View style={styles.formRow}>
-            <View style={styles.formRowHalf}>
-              <TextField
-                label="Category"
+        <View style={styles.formRow}>
+          <View style={[styles.formSection, { flex: 1 }]}>
+            <Text style={styles.formLabel}>Category</Text>
+            <View style={styles.formInputContainer}>
+              <TextInput
+                style={styles.formInput}
                 placeholder="e.g., Dumbbell"
+                placeholderTextColor={theme.colors.secondaryText}
                 value={customExercise.category}
-                onChangeText={(text) =>
-                  setCustomExercise((prev) => ({ ...prev, category: text }))
-                }
-              />
-            </View>
-            <View style={styles.formRowHalf}>
-              <TextField
-                label="Equipment"
-                placeholder="e.g., Bench"
-                value={customExercise.equipment_needed}
-                onChangeText={(text) =>
-                  setCustomExercise((prev) => ({
-                    ...prev,
-                    equipment_needed: text,
-                  }))
-                }
+                onChangeText={(text) => setCustomExercise((prev) => ({ ...prev, category: text }))}
               />
             </View>
           </View>
 
-          <TextField
-            label="Target Muscles"
-            placeholder="e.g., Quadriceps, Glutes"
-            value={customExercise.muscle_groups}
-            onChangeText={(text) =>
-              setCustomExercise((prev) => ({ ...prev, muscle_groups: text }))
-            }
-          />
+          <View style={[styles.formSection, { flex: 1, marginLeft: 12 }]}>
+            <Text style={styles.formLabel}>Target Muscles</Text>
+            <View style={styles.formInputContainer}>
+              <TextInput
+                style={styles.formInput}
+                placeholder="e.g., Quads, Glutes"
+                placeholderTextColor={theme.colors.secondaryText}
+                value={customExercise.muscle_groups}
+                onChangeText={(text) => setCustomExercise((prev) => ({ ...prev, muscle_groups: text }))}
+              />
+            </View>
+          </View>
+        </View>
 
-          {/* Defaults Section */}
+        <View style={styles.formSection}>
+          <Text style={styles.formLabel}>Equipment Needed</Text>
+          <View style={styles.formInputContainer}>
+            <TextInput
+              style={styles.formInput}
+              placeholder="e.g., Dumbbells, Bench"
+              placeholderTextColor={theme.colors.secondaryText}
+              value={customExercise.equipment_needed}
+              onChangeText={(text) => setCustomExercise((prev) => ({ ...prev, equipment_needed: text }))}
+            />
+          </View>
+        </View>
+
+        <View style={styles.defaultsSection}>
           <Text style={styles.defaultsSectionTitle}>Default Values</Text>
           <View style={styles.defaultsGrid}>
-            <View style={styles.defaultsCard}>
-              <Text style={styles.defaultsCardLabel}>Sets</Text>
-              <View style={styles.numberStepper}>
+            <View style={styles.defaultItem}>
+              <Text style={styles.defaultItemLabel}>Sets</Text>
+              <View style={styles.defaultInputContainer}>
                 <TouchableOpacity
-                  style={styles.stepperButton}
-                  onPress={() => {
-                    Haptics.selectionAsync();
+                  style={styles.defaultAdjustBtn}
+                  onPress={() =>
                     setCustomExercise((prev) => ({
                       ...prev,
                       default_sets: Math.max(1, prev.default_sets - 1),
-                    }));
-                  }}
+                    }))
+                  }
                 >
-                  <Ionicons
-                    name="remove"
-                    size={18}
-                    color={theme.colors.primaryText}
-                  />
+                  <Ionicons name="remove" size={16} color={theme.colors.primary} />
                 </TouchableOpacity>
-                <Text style={styles.stepperValue}>
-                  {customExercise.default_sets}
-                </Text>
+                <Text style={styles.defaultValue}>{customExercise.default_sets}</Text>
                 <TouchableOpacity
-                  style={styles.stepperButton}
-                  onPress={() => {
-                    Haptics.selectionAsync();
+                  style={styles.defaultAdjustBtn}
+                  onPress={() =>
                     setCustomExercise((prev) => ({
                       ...prev,
                       default_sets: prev.default_sets + 1,
-                    }));
-                  }}
+                    }))
+                  }
                 >
-                  <Ionicons
-                    name="add"
-                    size={18}
-                    color={theme.colors.primaryText}
-                  />
+                  <Ionicons name="add" size={16} color={theme.colors.primary} />
                 </TouchableOpacity>
               </View>
             </View>
 
-            <View style={styles.defaultsCard}>
-              <Text style={styles.defaultsCardLabel}>Reps</Text>
-              <View style={styles.numberStepper}>
+            <View style={styles.defaultItem}>
+              <Text style={styles.defaultItemLabel}>Reps</Text>
+              <View style={styles.defaultInputContainer}>
                 <TouchableOpacity
-                  style={styles.stepperButton}
-                  onPress={() => {
-                    Haptics.selectionAsync();
+                  style={styles.defaultAdjustBtn}
+                  onPress={() =>
                     setCustomExercise((prev) => ({
                       ...prev,
                       default_reps: Math.max(1, prev.default_reps - 1),
-                    }));
-                  }}
+                    }))
+                  }
                 >
-                  <Ionicons
-                    name="remove"
-                    size={18}
-                    color={theme.colors.primaryText}
-                  />
+                  <Ionicons name="remove" size={16} color={theme.colors.primary} />
                 </TouchableOpacity>
-                <Text style={styles.stepperValue}>
-                  {customExercise.default_reps}
-                </Text>
+                <Text style={styles.defaultValue}>{customExercise.default_reps}</Text>
                 <TouchableOpacity
-                  style={styles.stepperButton}
-                  onPress={() => {
-                    Haptics.selectionAsync();
+                  style={styles.defaultAdjustBtn}
+                  onPress={() =>
                     setCustomExercise((prev) => ({
                       ...prev,
                       default_reps: prev.default_reps + 1,
-                    }));
-                  }}
+                    }))
+                  }
                 >
-                  <Ionicons
-                    name="add"
-                    size={18}
-                    color={theme.colors.primaryText}
-                  />
+                  <Ionicons name="add" size={16} color={theme.colors.primary} />
                 </TouchableOpacity>
               </View>
             </View>
 
-            <View style={styles.defaultsCard}>
-              <Text style={styles.defaultsCardLabel}>Rest (sec)</Text>
-              <View style={styles.numberStepper}>
+            <View style={styles.defaultItem}>
+              <Text style={styles.defaultItemLabel}>Rest (s)</Text>
+              <View style={styles.defaultInputContainer}>
                 <TouchableOpacity
-                  style={styles.stepperButton}
-                  onPress={() => {
-                    Haptics.selectionAsync();
+                  style={styles.defaultAdjustBtn}
+                  onPress={() =>
                     setCustomExercise((prev) => ({
                       ...prev,
                       default_rest: Math.max(0, prev.default_rest - 15),
-                    }));
-                  }}
+                    }))
+                  }
                 >
-                  <Ionicons
-                    name="remove"
-                    size={18}
-                    color={theme.colors.primaryText}
-                  />
+                  <Ionicons name="remove" size={16} color={theme.colors.primary} />
                 </TouchableOpacity>
-                <Text style={styles.stepperValue}>
-                  {customExercise.default_rest}
-                </Text>
+                <Text style={styles.defaultValue}>{customExercise.default_rest}</Text>
                 <TouchableOpacity
-                  style={styles.stepperButton}
-                  onPress={() => {
-                    Haptics.selectionAsync();
+                  style={styles.defaultAdjustBtn}
+                  onPress={() =>
                     setCustomExercise((prev) => ({
                       ...prev,
                       default_rest: prev.default_rest + 15,
-                    }));
-                  }}
+                    }))
+                  }
                 >
-                  <Ionicons
-                    name="add"
-                    size={18}
-                    color={theme.colors.primaryText}
-                  />
+                  <Ionicons name="add" size={16} color={theme.colors.primary} />
                 </TouchableOpacity>
               </View>
             </View>
           </View>
         </View>
 
-        {/* Submit Button */}
-        <View style={styles.formActions}>
-          <PrimaryButton
-            title="Create Exercise"
-            onPress={handleCreateCustomExercise}
-            loading={isCreating}
-            disabled={!customExercise.name.trim()}
-          />
-        </View>
+        <TouchableOpacity
+          style={[styles.submitBtn, !customExercise.name.trim() && styles.submitBtnDisabled]}
+          onPress={handleCreateCustomExercise}
+          disabled={!customExercise.name.trim() || isCreating}
+        >
+          <LinearGradient
+            colors={
+              customExercise.name.trim()
+                ? [theme.colors.primary, theme.colors.primaryDark || theme.colors.primary]
+                : [theme.colors.surface, theme.colors.surface]
+            }
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.submitBtnGradient}
+          >
+            {isCreating ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                <Text style={styles.submitBtnText}>Create Exercise</Text>
+              </>
+            )}
+          </LinearGradient>
+        </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 
+  // Main content based on state
   const renderContent = () => {
-    if (showCreateForm) {
-      return renderCreateForm();
-    }
-
-    if (isLoading) {
-      return (
-        <View style={styles.loadingState}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={styles.loadingText}>Loading exercises...</Text>
-        </View>
-      );
-    }
-
-    if (error) {
-      return (
-        <View style={styles.errorState}>
-          <View style={styles.errorIconContainer}>
-            <Ionicons
-              name="cloud-offline-outline"
-              size={48}
-              color={theme.colors.error}
-            />
-          </View>
-          <Text style={styles.errorTitle}>Connection Error</Text>
-          <Text style={styles.errorSubtitle}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={fetchExercises}>
-            <Ionicons name="refresh" size={18} color={theme.colors.surface} />
-            <Text style={styles.retryButtonText}>Try Again</Text>
-          </TouchableOpacity>
-        </View>
-      );
-    }
-
-    if (exercises.length === 0) {
-      return renderEmptyState();
-    }
+    if (isLoading) return renderLoadingState();
+    if (error) return renderErrorState();
+    if (exercises.length === 0) return renderEmptyState();
 
     return (
       <FlatList
-        ref={listRef}
         data={exercises}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderExerciseItem}
-        ListHeaderComponent={renderHeader}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={styles.exerciseList}
         showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        onScrollBeginDrag={Keyboard.dismiss}
+        ItemSeparatorComponent={() => <View style={styles.exerciseSeparator} />}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        removeClippedSubviews={Platform.OS === 'android'}
       />
     );
   };
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="none"
-      onRequestClose={onClose}
-      statusBarTranslucent
-    >
-      {/* Backdrop */}
-      <Animated.View
-        style={[
-          styles.backdrop,
-          {
-            opacity: backdropAnim,
-          },
-        ]}
-      >
-        <TouchableOpacity
-          style={StyleSheet.absoluteFill}
-          onPress={onClose}
-          activeOpacity={1}
-        />
-      </Animated.View>
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
+      <View style={styles.modalContainer}>
+        {/* Backdrop */}
+        <Animated.View style={[styles.backdrop, { opacity: backdropAnim }]}>
+          <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} activeOpacity={1} />
+        </Animated.View>
 
-      {/* Main Container */}
-      <Animated.View
-        style={[
-          styles.container,
-          {
-            transform: [{ translateY: slideAnim }],
-          },
-        ]}
-      >
-        {/* Handle Bar */}
-        <View style={styles.handleBar}>
-          <View style={styles.handle} />
-        </View>
-
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.headerTitle}>Exercise Library</Text>
-            {selectedExercises.length > 0 && (
-              <View style={styles.selectedBadge}>
-                <Text style={styles.selectedBadgeText}>
-                  {selectedExercises.length} selected
-                </Text>
-              </View>
-            )}
-          </View>
-          <TouchableOpacity
-            style={styles.closeButton}
-            onPress={() => {
-              Haptics.selectionAsync();
-              onClose();
-            }}
-          >
-            <Ionicons name="close" size={24} color={theme.colors.primaryText} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Tabs */}
-        <View style={styles.tabsContainer}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'official' && styles.tabActive]}
-            onPress={() => handleTabChange('official')}
-          >
-            <Ionicons
-              name={activeTab === 'official' ? 'shield-checkmark' : 'shield-checkmark-outline'}
-              size={18}
-              color={
-                activeTab === 'official'
-                  ? theme.colors.primary
-                  : theme.colors.secondaryText
-              }
-            />
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === 'official' && styles.tabTextActive,
-              ]}
-            >
-              Official
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'custom' && styles.tabActive]}
-            onPress={() => handleTabChange('custom')}
-          >
-            <Ionicons
-              name={activeTab === 'custom' ? 'person' : 'person-outline'}
-              size={18}
-              color={
-                activeTab === 'custom'
-                  ? theme.colors.primary
-                  : theme.colors.secondaryText
-              }
-            />
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === 'custom' && styles.tabTextActive,
-              ]}
-            >
-              My Exercises
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Content */}
-        <View style={styles.content}>{renderContent()}</View>
-      </Animated.View>
-
-      {/* Exercise Detail Modal */}
-      {expandedExercise && (
-        <Modal
-          visible={!!expandedExercise}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setExpandedExercise(null)}
+        {/* Main Sheet */}
+        <Animated.View
+          style={[
+            styles.sheet,
+            {
+              transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
+            },
+          ]}
         >
-          <TouchableOpacity
-            style={styles.detailBackdrop}
-            onPress={() => setExpandedExercise(null)}
-            activeOpacity={1}
-          >
-            <View style={styles.detailCard}>
-              <View style={styles.detailHeader}>
-                <Text style={styles.detailTitle}>{expandedExercise.name}</Text>
-                <TouchableOpacity
-                  onPress={() => setExpandedExercise(null)}
-                  style={styles.detailClose}
-                >
-                  <Ionicons
-                    name="close"
-                    size={20}
-                    color={theme.colors.primaryText}
-                  />
-                </TouchableOpacity>
-              </View>
-              {expandedExercise.description && (
-                <Text style={styles.detailDescription}>
-                  {expandedExercise.description}
-                </Text>
-              )}
-              <View style={styles.detailMeta}>
-                {expandedExercise.category && (
-                  <View style={styles.detailMetaItem}>
-                    <Ionicons
-                      name={CATEGORY_ICONS[expandedExercise.category] || 'ellipse'}
-                      size={16}
-                      color={theme.colors.primary}
-                    />
-                    <Text style={styles.detailMetaText}>
-                      {expandedExercise.category}
-                    </Text>
-                  </View>
-                )}
-                {expandedExercise.muscle_groups && (
-                  <View style={styles.detailMetaItem}>
-                    <Ionicons
-                      name="body-outline"
-                      size={16}
-                      color={theme.colors.primary}
-                    />
-                    <Text style={styles.detailMetaText}>
-                      {expandedExercise.muscle_groups}
-                    </Text>
-                  </View>
-                )}
-                {expandedExercise.equipment_needed && (
-                  <View style={styles.detailMetaItem}>
-                    <Ionicons
-                      name="barbell-outline"
-                      size={16}
-                      color={theme.colors.primary}
-                    />
-                    <Text style={styles.detailMetaText}>
-                      {expandedExercise.equipment_needed}
-                    </Text>
-                  </View>
-                )}
-              </View>
-              <PrimaryButton
-                title={
-                  isExerciseSelected(expandedExercise)
-                    ? 'Remove from Selection'
-                    : 'Add to Program'
-                }
-                onPress={() => {
-                  onSelectExercise(expandedExercise);
-                  setExpandedExercise(null);
-                }}
-              />
-            </View>
-          </TouchableOpacity>
-        </Modal>
-      )}
+          {showCreateForm ? (
+            <>
+              {renderHeader()}
+              {renderCreateForm()}
+            </>
+          ) : (
+            <>
+              {renderHeader()}
+              {renderTabs()}
+              {renderSearchBar()}
+              {renderCategoryFilters()}
+              {renderExtendedFilters()}
+              {renderCreateButton()}
+
+              {/* Exercise List Container - This is the key fix for scrolling */}
+              <View style={styles.listContainer}>{renderContent()}</View>
+            </>
+          )}
+        </Animated.View>
+      </View>
     </Modal>
   );
 };
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
+    modalContainer: {
+      flex: 1,
+      justifyContent: 'flex-end',
+    },
     backdrop: {
       ...StyleSheet.absoluteFillObject,
       backgroundColor: 'rgba(0, 0, 0, 0.6)',
     },
-    container: {
-      position: 'absolute',
-      bottom: 0,
-      left: 0,
-      right: 0,
+    sheet: {
       backgroundColor: theme.colors.background,
       borderTopLeftRadius: 24,
       borderTopRightRadius: 24,
-      maxHeight: SCREEN_HEIGHT * 0.92,
-      minHeight: SCREEN_HEIGHT * 0.75,
+      height: MODAL_HEIGHT,
       overflow: 'hidden',
-      // Shadow for iOS
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: -4 },
-      shadowOpacity: 0.15,
-      shadowRadius: 20,
-      // Elevation for Android
-      elevation: 24,
     },
-    handleBar: {
-      alignItems: 'center',
+
+    // Header
+    header: {
       paddingTop: 12,
-      paddingBottom: 8,
+      paddingHorizontal: 20,
+      paddingBottom: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
     },
-    handle: {
+    headerHandle: {
       width: 36,
       height: 4,
       backgroundColor: theme.colors.border,
       borderRadius: 2,
+      alignSelf: 'center',
+      marginBottom: 16,
     },
-    header: {
+    headerRow: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       justifyContent: 'space-between',
-      paddingHorizontal: 20,
-      paddingBottom: 16,
     },
-    headerLeft: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
+    headerTitleSection: {
+      flex: 1,
     },
     headerTitle: {
       fontSize: 24,
@@ -1391,45 +920,42 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.primaryText,
       letterSpacing: -0.5,
     },
-    selectedBadge: {
-      backgroundColor: theme.colors.primary,
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-      borderRadius: 12,
+    headerSubtitle: {
+      fontSize: 13,
+      color: theme.colors.secondaryText,
+      marginTop: 2,
     },
-    selectedBadgeText: {
-      fontSize: 12,
-      fontWeight: '600',
-      color: theme.colors.surface,
-    },
-    closeButton: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
+    closeBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
       backgroundColor: theme.colors.surface,
-      alignItems: 'center',
       justifyContent: 'center',
+      alignItems: 'center',
     },
 
     // Tabs
+    tabsWrapper: {
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+    },
     tabsContainer: {
       flexDirection: 'row',
-      paddingHorizontal: 20,
-      paddingBottom: 16,
-      gap: 12,
+      backgroundColor: theme.colors.surface,
+      borderRadius: 12,
+      padding: 4,
     },
-    tab: {
+    tabBtn: {
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      paddingVertical: 12,
-      borderRadius: 12,
-      backgroundColor: theme.colors.surface,
-      gap: 8,
+      paddingVertical: 10,
+      borderRadius: 10,
+      gap: 6,
     },
-    tabActive: {
-      backgroundColor: theme.colors.primarySoft,
+    tabBtnActive: {
+      backgroundColor: theme.colors.primary,
     },
     tabText: {
       fontSize: 14,
@@ -1437,478 +963,396 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.secondaryText,
     },
     tabTextActive: {
-      color: theme.colors.primary,
+      color: '#fff',
     },
 
-    // Content
-    content: {
-      flex: 1,
-    },
-    listContent: {
-      paddingBottom: 40,
-    },
-
-    // Sticky Header / Search Section
-    stickyHeader: {
-      backgroundColor: theme.colors.background,
-    },
+    // Search
     searchSection: {
       flexDirection: 'row',
       paddingHorizontal: 20,
       paddingBottom: 12,
-      gap: 12,
+      gap: 10,
     },
-    searchContainer: {
+    searchBar: {
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: theme.colors.surface,
-      borderRadius: 14,
+      borderRadius: 12,
       paddingHorizontal: 14,
-      height: 48,
+      height: 44,
       gap: 10,
-      borderWidth: 2,
-      borderColor: 'transparent',
-    },
-    searchContainerFocused: {
-      borderColor: theme.colors.primary,
-      backgroundColor: theme.colors.background,
     },
     searchInput: {
       flex: 1,
-      fontSize: 16,
+      fontSize: 15,
       color: theme.colors.primaryText,
       paddingVertical: 0,
     },
-    filterToggle: {
-      width: 48,
-      height: 48,
-      borderRadius: 14,
-      backgroundColor: theme.colors.surface,
-      alignItems: 'center',
-      justifyContent: 'center',
+    clearSearchBtn: {
+      padding: 2,
     },
-    filterToggleActive: {
-      backgroundColor: theme.colors.primarySoft,
+    filterToggleBtn: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      backgroundColor: theme.colors.surface,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    filterToggleBtnActive: {
+      backgroundColor: theme.colors.primary,
     },
     filterBadge: {
       position: 'absolute',
-      top: 8,
-      right: 8,
+      top: 6,
+      right: 6,
       width: 16,
       height: 16,
       borderRadius: 8,
-      backgroundColor: theme.colors.primary,
-      alignItems: 'center',
+      backgroundColor: theme.colors.error,
       justifyContent: 'center',
+      alignItems: 'center',
     },
     filterBadgeText: {
       fontSize: 10,
       fontWeight: '700',
-      color: theme.colors.surface,
+      color: '#fff',
     },
 
-    // Category Chips
-    categoryScroll: {
-      marginBottom: 12,
+    // Category Filters
+    categoryFiltersContainer: {
+      marginBottom: 8,
     },
-    categoryScrollContent: {
+    categoryFiltersContent: {
       paddingHorizontal: 20,
       gap: 8,
-      flexDirection: 'row',
     },
-    categoryChip: {
+    categoryFilterPill: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 14,
       paddingVertical: 8,
-      borderRadius: 20,
+      paddingHorizontal: 14,
       backgroundColor: theme.colors.surface,
-      gap: 6,
+      borderRadius: 20,
+      marginRight: 8,
     },
-    categoryChipActive: {
+    categoryFilterPillActive: {
       backgroundColor: theme.colors.primary,
     },
-    categoryChipText: {
+    categoryFilterIcon: {
+      marginRight: 6,
+    },
+    categoryFilterText: {
       fontSize: 13,
       fontWeight: '500',
       color: theme.colors.secondaryText,
     },
-    categoryChipTextActive: {
-      color: theme.colors.surface,
+    categoryFilterTextActive: {
+      color: '#fff',
     },
 
-    // Muscle Filters
-    muscleFiltersContainer: {
+    // Extended Filters
+    extendedFiltersPanel: {
       marginHorizontal: 20,
-      marginBottom: 12,
-      padding: 16,
       backgroundColor: theme.colors.surface,
       borderRadius: 16,
+      paddingHorizontal: 16,
+      overflow: 'hidden',
+      marginBottom: 8,
     },
-    muscleFiltersHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 12,
+    muscleFilterSection: {
+      paddingTop: 16,
     },
-    muscleFiltersTitle: {
-      fontSize: 13,
+    filterSectionLabel: {
+      fontSize: 12,
       fontWeight: '600',
       color: theme.colors.secondaryText,
       textTransform: 'uppercase',
       letterSpacing: 0.5,
+      marginBottom: 10,
     },
-    clearMuscleText: {
-      fontSize: 13,
-      fontWeight: '500',
-      color: theme.colors.error,
-    },
-    muscleGrid: {
+    muscleChipsRow: {
       flexDirection: 'row',
-      flexWrap: 'wrap',
+      flexWrap: 'nowrap',
       gap: 8,
+      paddingBottom: 8,
     },
     muscleChip: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 12,
       paddingVertical: 6,
-      borderRadius: 8,
+      paddingHorizontal: 10,
       backgroundColor: theme.colors.background,
-      gap: 6,
+      borderRadius: 8,
+      gap: 4,
     },
     muscleChipActive: {
-      backgroundColor: theme.colors.primary,
+      backgroundColor: theme.colors.primarySoft,
+    },
+    muscleChipEmoji: {
+      fontSize: 12,
     },
     muscleChipText: {
       fontSize: 12,
-      fontWeight: '500',
       color: theme.colors.secondaryText,
+      fontWeight: '500',
     },
     muscleChipTextActive: {
-      color: theme.colors.surface,
-    },
-
-    // Active Filters Bar
-    activeFiltersBar: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginHorizontal: 20,
-      marginBottom: 12,
-      paddingHorizontal: 14,
-      paddingVertical: 10,
-      backgroundColor: theme.colors.primarySoft,
-      borderRadius: 10,
-    },
-    activeFiltersText: {
-      flex: 1,
-      fontSize: 13,
       color: theme.colors.primary,
-      fontWeight: '500',
     },
-    clearAllButton: {
+    clearAllFiltersBtn: {
       flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-    },
-    clearAllText: {
-      fontSize: 12,
-      fontWeight: '600',
-      color: theme.colors.error,
-    },
-
-    // Create Custom Banner
-    createCustomBanner: {
-      marginHorizontal: 20,
-      marginBottom: 16,
-      borderRadius: 16,
-      overflow: 'hidden',
-    },
-    createCustomContent: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      padding: 16,
-    },
-    createCustomIcon: {
-      width: 44,
-      height: 44,
-      borderRadius: 12,
-      backgroundColor: 'rgba(255,255,255,0.2)',
       alignItems: 'center',
       justifyContent: 'center',
-      marginRight: 14,
+      paddingVertical: 12,
+      gap: 6,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+      marginTop: 8,
     },
-    createCustomText: {
-      flex: 1,
-    },
-    createCustomTitle: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: theme.colors.surface,
-      marginBottom: 2,
-    },
-    createCustomSubtitle: {
+    clearAllFiltersText: {
       fontSize: 13,
-      color: 'rgba(255,255,255,0.8)',
+      color: theme.colors.error,
+      fontWeight: '500',
     },
 
-    // Results Bar
-    resultsBar: {
-      paddingHorizontal: 20,
-      paddingBottom: 12,
+    // Create Exercise Button
+    createExerciseBtn: {
+      marginHorizontal: 20,
+      marginBottom: 12,
+      borderRadius: 12,
+      overflow: 'hidden',
     },
-    resultsText: {
-      fontSize: 13,
-      color: theme.colors.secondaryText,
-      fontWeight: '500',
+    createExerciseBtnGradient: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 14,
+      gap: 8,
+    },
+    createExerciseBtnText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: '#fff',
+    },
+
+    // List Container - KEY FIX FOR SCROLLING
+    listContainer: {
+      flex: 1,
+    },
+
+    // Exercise List
+    exerciseList: {
+      paddingHorizontal: 20,
+      paddingTop: 8,
+      paddingBottom: 40,
+    },
+    exerciseSeparator: {
+      height: 10,
     },
 
     // Exercise Card
     exerciseCard: {
-      marginHorizontal: 20,
-      marginBottom: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
       backgroundColor: theme.colors.surface,
       borderRadius: 16,
-      overflow: 'hidden',
-      flexDirection: 'row',
+      padding: 14,
       borderWidth: 2,
       borderColor: 'transparent',
     },
     exerciseCardSelected: {
-      borderColor: theme.colors.primary,
       backgroundColor: theme.colors.primarySoft,
+      borderColor: theme.colors.primary,
     },
-    exerciseImageWrapper: {
-      width: 90,
-      height: 110,
-      position: 'relative',
+    exerciseVisual: {
+      marginRight: 14,
     },
     exerciseImage: {
-      width: '100%',
-      height: '100%',
+      width: 56,
+      height: 56,
+      borderRadius: 12,
     },
-    imageGradient: {
-      ...StyleSheet.absoluteFillObject,
-    },
-    exercisePlaceholder: {
-      flex: 1,
-      alignItems: 'center',
+    exerciseIconContainer: {
+      width: 56,
+      height: 56,
+      borderRadius: 12,
       justifyContent: 'center',
-    },
-    categoryBadge: {
-      position: 'absolute',
-      bottom: 6,
-      left: 6,
-      flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 6,
-      paddingVertical: 3,
-      backgroundColor: 'rgba(0,0,0,0.6)',
-      borderRadius: 6,
-      gap: 4,
-    },
-    categoryBadgeText: {
-      fontSize: 9,
-      fontWeight: '600',
-      color: theme.colors.surface,
-      textTransform: 'uppercase',
     },
     exerciseContent: {
       flex: 1,
-      padding: 12,
-      justifyContent: 'space-between',
-    },
-    exerciseHeader: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      justifyContent: 'space-between',
-    },
-    exerciseName: {
-      flex: 1,
-      fontSize: 15,
-      fontWeight: '600',
-      color: theme.colors.primaryText,
-      lineHeight: 20,
-      paddingRight: 8,
-    },
-    selectionIndicator: {
-      width: 24,
-      height: 24,
-    },
-    checkmarkCircle: {
-      width: 24,
-      height: 24,
-      borderRadius: 12,
-      backgroundColor: theme.colors.primary,
-      alignItems: 'center',
       justifyContent: 'center',
     },
-    muscleTagsRow: {
+    exerciseName: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.colors.primaryText,
+      marginBottom: 6,
+    },
+    exerciseNameSelected: {
+      color: theme.colors.primary,
+    },
+    exerciseMetaRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginTop: 6,
+      flexWrap: 'wrap',
       gap: 6,
     },
     muscleTag: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: 8,
+      backgroundColor: theme.colors.background,
       paddingVertical: 3,
-      backgroundColor: theme.colors.primarySoft,
+      paddingHorizontal: 8,
       borderRadius: 6,
-      gap: 4,
     },
     muscleTagText: {
-      fontSize: 10,
+      fontSize: 11,
+      color: theme.colors.secondaryText,
       fontWeight: '500',
+    },
+    categoryPill: {
+      backgroundColor: theme.colors.background,
+      paddingVertical: 3,
+      paddingHorizontal: 8,
+      borderRadius: 6,
+    },
+    categoryPillSelected: {
+      backgroundColor: theme.colors.primary + '20',
+    },
+    categoryPillText: {
+      fontSize: 11,
+      color: theme.colors.secondaryText,
+      fontWeight: '500',
+    },
+    categoryPillTextSelected: {
       color: theme.colors.primary,
     },
-    moreMuscles: {
-      fontSize: 10,
-      fontWeight: '500',
-      color: theme.colors.secondaryText,
-    },
-    defaultsRow: {
+    exerciseStats: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginTop: 10,
+      backgroundColor: theme.colors.background,
+      borderRadius: 10,
+      paddingVertical: 8,
+      paddingHorizontal: 10,
+      marginLeft: 10,
     },
-    defaultItem: {
+    statBadge: {
       alignItems: 'center',
+      minWidth: 28,
     },
-    defaultValue: {
-      fontSize: 14,
+    statValue: {
+      fontSize: 15,
       fontWeight: '700',
       color: theme.colors.primaryText,
     },
-    defaultLabel: {
-      fontSize: 10,
+    statLabel: {
+      fontSize: 9,
       color: theme.colors.secondaryText,
+      textTransform: 'uppercase',
       marginTop: 1,
     },
-    defaultDivider: {
+    statDivider: {
       width: 1,
-      height: 20,
+      height: 24,
       backgroundColor: theme.colors.border,
-      marginHorizontal: 14,
+      marginHorizontal: 8,
     },
-    quickAddButton: {
+    checkmarkContainer: {
       position: 'absolute',
-      right: 12,
-      bottom: 12,
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      backgroundColor: theme.colors.primarySoft,
-      alignItems: 'center',
-      justifyContent: 'center',
+      top: 10,
+      right: 10,
     },
-    quickAddButtonSelected: {
+    checkmarkBadge: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
       backgroundColor: theme.colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
 
-    // Loading State
+    // States
     loadingState: {
       flex: 1,
-      alignItems: 'center',
       justifyContent: 'center',
-      paddingVertical: 60,
+      alignItems: 'center',
+      gap: 16,
     },
     loadingText: {
-      marginTop: 16,
-      fontSize: 14,
+      fontSize: 15,
       color: theme.colors.secondaryText,
     },
-
-    // Error State
     errorState: {
       flex: 1,
-      alignItems: 'center',
       justifyContent: 'center',
+      alignItems: 'center',
       paddingHorizontal: 40,
-      paddingVertical: 60,
-    },
-    errorIconContainer: {
-      width: 80,
-      height: 80,
-      borderRadius: 40,
-      backgroundColor: 'rgba(255,59,48,0.1)',
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: 20,
+      gap: 12,
     },
     errorTitle: {
       fontSize: 18,
       fontWeight: '600',
       color: theme.colors.primaryText,
-      marginBottom: 8,
     },
     errorSubtitle: {
       fontSize: 14,
       color: theme.colors.secondaryText,
       textAlign: 'center',
-      marginBottom: 24,
     },
-    retryButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: 20,
-      paddingVertical: 12,
+    retryBtn: {
+      marginTop: 8,
+      paddingVertical: 10,
+      paddingHorizontal: 24,
       backgroundColor: theme.colors.primary,
-      borderRadius: 12,
-      gap: 8,
+      borderRadius: 10,
     },
-    retryButtonText: {
+    retryBtnText: {
       fontSize: 14,
       fontWeight: '600',
-      color: theme.colors.surface,
+      color: '#fff',
     },
-
-    // Empty State
     emptyState: {
       flex: 1,
-      alignItems: 'center',
       justifyContent: 'center',
+      alignItems: 'center',
       paddingHorizontal: 40,
-      paddingVertical: 60,
+      gap: 8,
     },
     emptyIconContainer: {
-      width: 100,
-      height: 100,
-      borderRadius: 50,
-      alignItems: 'center',
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: theme.colors.surface,
       justifyContent: 'center',
-      marginBottom: 24,
-      overflow: 'hidden',
+      alignItems: 'center',
+      marginBottom: 8,
     },
     emptyTitle: {
-      fontSize: 20,
+      fontSize: 18,
       fontWeight: '600',
       color: theme.colors.primaryText,
-      marginBottom: 8,
     },
     emptySubtitle: {
       fontSize: 14,
       color: theme.colors.secondaryText,
       textAlign: 'center',
       lineHeight: 20,
-      marginBottom: 24,
     },
-    emptyActionButton: {
+    emptyCreateBtn: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 20,
+      marginTop: 16,
       paddingVertical: 12,
+      paddingHorizontal: 20,
       backgroundColor: theme.colors.primary,
       borderRadius: 12,
       gap: 8,
     },
-    emptyActionText: {
-      fontSize: 14,
+    emptyCreateBtnText: {
+      fontSize: 15,
       fontWeight: '600',
-      color: theme.colors.surface,
+      color: '#fff',
     },
 
     // Create Form
@@ -1916,142 +1360,136 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     createFormScroll: {
+      paddingHorizontal: 20,
       paddingBottom: 40,
     },
-    formHeader: {
+    createFormHeader: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       justifyContent: 'space-between',
-      paddingHorizontal: 20,
-      paddingVertical: 16,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.colors.border,
+      paddingTop: 8,
+      paddingBottom: 24,
     },
-    formBackButton: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: theme.colors.surface,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    formTitle: {
-      fontSize: 18,
-      fontWeight: '600',
+    createFormTitle: {
+      fontSize: 22,
+      fontWeight: '700',
       color: theme.colors.primaryText,
     },
-    formContent: {
-      paddingHorizontal: 20,
-      paddingTop: 20,
+    createFormSubtitle: {
+      fontSize: 14,
+      color: theme.colors.secondaryText,
+      marginTop: 2,
+    },
+    createFormCloseBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: theme.colors.surface,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    formSection: {
+      marginBottom: 16,
     },
     formRow: {
       flexDirection: 'row',
-      gap: 12,
     },
-    formRowHalf: {
-      flex: 1,
+    formLabel: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: theme.colors.secondaryText,
+      marginBottom: 8,
+      textTransform: 'uppercase',
+      letterSpacing: 0.3,
+    },
+    formInputContainer: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    formInputMultiline: {
+      minHeight: 80,
+    },
+    formInput: {
+      fontSize: 15,
+      color: theme.colors.primaryText,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+    },
+    formInputArea: {
+      minHeight: 70,
+      textAlignVertical: 'top',
+    },
+    defaultsSection: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: 16,
+      padding: 16,
+      marginTop: 8,
+      marginBottom: 24,
     },
     defaultsSectionTitle: {
       fontSize: 13,
       fontWeight: '600',
       color: theme.colors.secondaryText,
       textTransform: 'uppercase',
-      letterSpacing: 0.5,
-      marginTop: 20,
-      marginBottom: 12,
+      letterSpacing: 0.3,
+      marginBottom: 16,
     },
     defaultsGrid: {
       flexDirection: 'row',
-      gap: 12,
+      justifyContent: 'space-between',
     },
-    defaultsCard: {
-      flex: 1,
-      backgroundColor: theme.colors.surface,
-      borderRadius: 14,
-      padding: 14,
+    defaultItem: {
       alignItems: 'center',
+      flex: 1,
     },
-    defaultsCardLabel: {
+    defaultItemLabel: {
       fontSize: 12,
       color: theme.colors.secondaryText,
-      marginBottom: 10,
+      marginBottom: 8,
     },
-    numberStepper: {
+    defaultInputContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
-    },
-    stepperButton: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
       backgroundColor: theme.colors.background,
-      alignItems: 'center',
-      justifyContent: 'center',
+      borderRadius: 10,
+      paddingVertical: 6,
+      paddingHorizontal: 8,
     },
-    stepperValue: {
+    defaultAdjustBtn: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: theme.colors.surface,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    defaultValue: {
       fontSize: 18,
       fontWeight: '700',
       color: theme.colors.primaryText,
-      minWidth: 36,
+      minWidth: 40,
       textAlign: 'center',
     },
-    formActions: {
-      paddingHorizontal: 20,
-      paddingTop: 24,
+    submitBtn: {
+      borderRadius: 14,
+      overflow: 'hidden',
     },
-
-    // Detail Modal
-    detailBackdrop: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.6)',
-      justifyContent: 'center',
-      paddingHorizontal: 20,
+    submitBtnDisabled: {
+      opacity: 0.5,
     },
-    detailCard: {
-      backgroundColor: theme.colors.background,
-      borderRadius: 20,
-      padding: 24,
-    },
-    detailHeader: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      justifyContent: 'space-between',
-      marginBottom: 12,
-    },
-    detailTitle: {
-      flex: 1,
-      fontSize: 20,
-      fontWeight: '700',
-      color: theme.colors.primaryText,
-      paddingRight: 16,
-    },
-    detailClose: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      backgroundColor: theme.colors.surface,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    detailDescription: {
-      fontSize: 14,
-      color: theme.colors.secondaryText,
-      lineHeight: 20,
-      marginBottom: 16,
-    },
-    detailMeta: {
-      marginBottom: 20,
-      gap: 10,
-    },
-    detailMetaItem: {
+    submitBtnGradient: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
+      justifyContent: 'center',
+      paddingVertical: 16,
+      gap: 8,
     },
-    detailMetaText: {
-      fontSize: 14,
-      color: theme.colors.primaryText,
+    submitBtnText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: '#fff',
     },
   });
 
