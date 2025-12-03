@@ -368,7 +368,7 @@ export function createEmptyWeek(weekNumber: number): BuilderWeek {
     week_number: weekNumber,
     week_name: `Week ${weekNumber}`,
     notes: '',
-    sessions: [],
+    sessions: [createEmptySession(0)],
     isCollapsed: false,
   };
 }

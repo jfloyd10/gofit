@@ -135,10 +135,24 @@ export const PrescriptionEditor: React.FC<PrescriptionEditorProps> = ({
           <Text style={styles.restText}>{getRestDisplay()}</Text>
         </View>
 
-        {/* Delete */}
+        {/* Copy Button (Added) */}
         <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={handleDelete}
+          style={styles.actionButton}
+          onPress={(e) => {
+            e.stopPropagation();
+            handleDuplicate();
+          }}
+        >
+          <Ionicons name="copy-outline" size={16} color={theme.colors.secondaryText} />
+        </TouchableOpacity>
+
+        {/* Delete Button */}
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={(e) => {
+            e.stopPropagation();
+            handleDelete();
+          }}
         >
           <Ionicons name="close" size={16} color={theme.colors.secondaryText} />
         </TouchableOpacity>
@@ -484,9 +498,13 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.secondaryText,
       textAlign: 'center',
     },
-    deleteButton: {
+    
+    // Updated Action Button Style
+    actionButton: {
       width: 30,
+      height: 30,
       alignItems: 'center',
+      justifyContent: 'center',
     },
 
     // Modal
