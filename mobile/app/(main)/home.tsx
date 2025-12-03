@@ -58,8 +58,7 @@ export default function HomeScreen() {
   };
 
   const handleProgramPress = (programId: number) => {
-    // Navigate to the builder for editing/viewing
-    router.push(`/program-builder/${programId}`);
+    router.push(`/program-details/${programId}`);
   };
 
   if (authLoading) {
