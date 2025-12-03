@@ -1,3 +1,5 @@
+// src/components/program-builder/ExerciseLibrary.tsx
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
@@ -21,7 +23,6 @@ import { useTheme, Theme } from '../../theme';
 import { useAuth } from '../../providers/AuthProvider';
 import { exercisesApi } from '../../lib/api/programs';
 import { Exercise, EXERCISE_CATEGORIES, MUSCLE_GROUPS } from '../../lib/types/program';
-import { ExerciseDetail } from './ExerciseDetail';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 const MODAL_HEIGHT = SCREEN_HEIGHT * 0.92;
@@ -35,6 +36,7 @@ interface ExerciseLibraryProps {
 }
 
 type TabType = 'official' | 'custom';
+type ViewMode = 'list' | 'detail' | 'create';
 
 interface FilterState {
   search: string;
@@ -42,7 +44,7 @@ interface FilterState {
   muscleGroup: string | null;
 }
 
-// Category icons mapping for visual appeal
+// Category icons mapping
 const CATEGORY_ICONS: Record<string, string> = {
   'Barbell': 'barbell',
   'Dumbbell': 'fitness',
@@ -95,11 +97,10 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
     muscleGroup: null,
   });
   const [showFilters, setShowFilters] = useState(false);
-  const [showCreateForm, setShowCreateForm] = useState(false);
   
-  // Exercise Detail state - using separate visibility flag
-  const [exerciseDetailVisible, setExerciseDetailVisible] = useState(false);
-  const [selectedExerciseForDetail, setSelectedExerciseForDetail] = useState<Exercise | null>(null);
+  // View mode: 'list' | 'detail' | 'create'
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [detailExercise, setDetailExercise] = useState<Exercise | null>(null);
   
   const searchInputRef = useRef<TextInput>(null);
 
@@ -119,10 +120,10 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
   // Animations
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.95)).current;
+  const detailSlideAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
   const filterHeightAnim = useRef(new Animated.Value(0)).current;
 
-  // Animation effects
+  // Main modal animation
   useEffect(() => {
     if (visible) {
       Animated.parallel([
@@ -136,12 +137,6 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
           toValue: 1,
           duration: 300,
           useNativeDriver: true,
-        }),
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          useNativeDriver: true,
-          tension: 80,
-          friction: 12,
         }),
       ]).start();
       fetchExercises();
@@ -158,8 +153,29 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
           useNativeDriver: true,
         }),
       ]).start();
+      // Reset view mode when closing
+      setViewMode('list');
+      setDetailExercise(null);
     }
   }, [visible]);
+
+  // Detail view animation
+  useEffect(() => {
+    if (viewMode === 'detail') {
+      Animated.spring(detailSlideAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 80,
+        friction: 12,
+      }).start();
+    } else {
+      Animated.timing(detailSlideAnim, {
+        toValue: SCREEN_WIDTH,
+        duration: 250,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [viewMode]);
 
   // Filter panel animation
   useEffect(() => {
@@ -244,7 +260,7 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
       );
 
       setExercises((prev) => [newExercise, ...prev]);
-      setShowCreateForm(false);
+      setViewMode('list');
       setCustomExercise({
         name: '',
         description: '',
@@ -268,28 +284,20 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
     return selectedExercises.some((e) => e.id === exercise.id);
   }, [selectedExercises]);
 
-  // Open exercise detail - set both the exercise and visibility
-  const handleInfoPress = useCallback((exercise: Exercise) => {
-    setSelectedExerciseForDetail(exercise);
-    setExerciseDetailVisible(true);
+  // Open detail view
+  const openExerciseDetail = useCallback((exercise: Exercise) => {
+    setDetailExercise(exercise);
+    setViewMode('detail');
   }, []);
 
-  // Close exercise detail
-  const handleCloseDetail = useCallback(() => {
-    setExerciseDetailVisible(false);
-    // Clear the exercise after animation completes
-    setTimeout(() => {
-      setSelectedExerciseForDetail(null);
-    }, 350);
+  // Close detail view
+  const closeExerciseDetail = useCallback(() => {
+    setViewMode('list');
+    setTimeout(() => setDetailExercise(null), 300);
   }, []);
 
-  // Add from detail view
-  const handleAddFromDetail = useCallback((exercise: Exercise) => {
-    onSelectExercise(exercise);
-    handleCloseDetail();
-  }, [onSelectExercise, handleCloseDetail]);
-
-  const handleAddPress = useCallback((exercise: Exercise) => {
+  // Add exercise
+  const handleAddExercise = useCallback((exercise: Exercise) => {
     onSelectExercise(exercise);
   }, [onSelectExercise]);
 
@@ -300,10 +308,9 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
 
     return (
       <View style={[styles.exerciseCard, selected && styles.exerciseCardSelected]}>
-        {/* Main touchable area */}
         <TouchableOpacity
           style={styles.exerciseMainArea}
-          onPress={() => handleAddPress(item)}
+          onPress={() => handleAddExercise(item)}
           activeOpacity={0.7}
         >
           <View style={styles.exerciseVisual}>
@@ -349,20 +356,20 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
           </View>
         </TouchableOpacity>
 
-        {/* Action Buttons */}
+        {/* Action Buttons - Separate from main touchable */}
         <View style={styles.actionButtons}>
-          {/* Info Button */}
           <TouchableOpacity
             style={styles.infoButton}
-            onPress={() => handleInfoPress(item)}
+            onPress={() => openExerciseDetail(item)}
+            activeOpacity={0.6}
           >
             <Ionicons name="information-circle-outline" size={24} color={theme.colors.secondaryText} />
           </TouchableOpacity>
 
-          {/* Add Button */}
           <TouchableOpacity
             style={[styles.addButton, selected && styles.addButtonSelected]}
-            onPress={() => handleAddPress(item)}
+            onPress={() => handleAddExercise(item)}
+            activeOpacity={0.6}
           >
             {selected ? (
               <Ionicons name="checkmark" size={20} color="#fff" />
@@ -375,11 +382,10 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
     );
   };
 
-  // Header Component
-  const renderHeader = () => (
+  // List View Header
+  const renderListHeader = () => (
     <View style={styles.header}>
       <View style={styles.headerHandle} />
-
       <View style={styles.headerRow}>
         <View style={styles.headerTitleSection}>
           <Text style={styles.headerTitle}>Exercise Library</Text>
@@ -387,7 +393,6 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
             {exercises.length} exercises available
           </Text>
         </View>
-
         <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
           <Ionicons name="close" size={22} color={theme.colors.primaryText} />
         </TouchableOpacity>
@@ -395,7 +400,7 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
     </View>
   );
 
-  // Tabs Component
+  // Tabs
   const renderTabs = () => (
     <View style={styles.tabsWrapper}>
       <View style={styles.tabsContainer}>
@@ -430,7 +435,7 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
     </View>
   );
 
-  // Search Bar Component
+  // Search Bar
   const renderSearchBar = () => (
     <View style={styles.searchSection}>
       <View style={styles.searchBar}>
@@ -438,14 +443,14 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
         <TextInput
           ref={searchInputRef}
           style={styles.searchInput}
-          placeholder="Search by name, muscle, equipment..."
+          placeholder="Search exercises..."
           placeholderTextColor={theme.colors.secondaryText}
           value={filters.search}
           onChangeText={handleSearchChange}
           returnKeyType="search"
         />
         {filters.search.length > 0 && (
-          <TouchableOpacity onPress={() => handleSearchChange('')} style={styles.clearSearchBtn}>
+          <TouchableOpacity onPress={() => handleSearchChange('')}>
             <Ionicons name="close-circle" size={18} color={theme.colors.secondaryText} />
           </TouchableOpacity>
         )}
@@ -469,7 +474,7 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
     </View>
   );
 
-  // Category Filter Pills
+  // Category Filters
   const renderCategoryFilters = () => (
     <View style={styles.categoryFiltersContainer}>
       <ScrollView
@@ -512,7 +517,7 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
     </View>
   );
 
-  // Extended Filters Panel
+  // Extended Filters
   const renderExtendedFilters = () => {
     const filterHeight = filterHeightAnim.interpolate({
       inputRange: [0, 1],
@@ -556,12 +561,12 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
     );
   };
 
-  // Create Custom Exercise Button
+  // Create Button
   const renderCreateButton = () => {
     if (activeTab !== 'custom') return null;
 
     return (
-      <TouchableOpacity style={styles.createExerciseBtn} onPress={() => setShowCreateForm(true)}>
+      <TouchableOpacity style={styles.createExerciseBtn} onPress={() => setViewMode('create')}>
         <LinearGradient
           colors={[theme.colors.primary, theme.colors.primaryDark || theme.colors.primary]}
           start={{ x: 0, y: 0 }}
@@ -590,15 +595,9 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
       </Text>
       <Text style={styles.emptySubtitle}>
         {activeTab === 'custom'
-          ? 'Create your first custom exercise to see it here'
+          ? 'Create your first custom exercise'
           : 'Try adjusting your search or filters'}
       </Text>
-      {activeTab === 'custom' && (
-        <TouchableOpacity style={styles.emptyCreateBtn} onPress={() => setShowCreateForm(true)}>
-          <Ionicons name="add-circle" size={18} color="#fff" />
-          <Text style={styles.emptyCreateBtnText}>Create Exercise</Text>
-        </TouchableOpacity>
-      )}
     </View>
   );
 
@@ -622,216 +621,329 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
     </View>
   );
 
-  // Create Form
+  // Create Form View
   const renderCreateForm = () => (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.createFormWrapper}
-    >
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.createFormScroll}>
-        <View style={styles.createFormHeader}>
-          <View>
-            <Text style={styles.createFormTitle}>New Exercise</Text>
-            <Text style={styles.createFormSubtitle}>Add to your personal library</Text>
-          </View>
-          <TouchableOpacity style={styles.createFormCloseBtn} onPress={() => setShowCreateForm(false)}>
-            <Ionicons name="close" size={22} color={theme.colors.primaryText} />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.formSection}>
-          <Text style={styles.formLabel}>Exercise Name *</Text>
-          <View style={styles.formInputContainer}>
-            <TextInput
-              style={styles.formInput}
-              placeholder="e.g., Bulgarian Split Squat"
-              placeholderTextColor={theme.colors.secondaryText}
-              value={customExercise.name}
-              onChangeText={(text) => setCustomExercise((prev) => ({ ...prev, name: text }))}
-            />
-          </View>
-        </View>
-
-        <View style={styles.formSection}>
-          <Text style={styles.formLabel}>Description</Text>
-          <View style={[styles.formInputContainer, styles.formInputMultiline]}>
-            <TextInput
-              style={[styles.formInput, styles.formInputArea]}
-              placeholder="Brief description of the exercise..."
-              placeholderTextColor={theme.colors.secondaryText}
-              value={customExercise.description}
-              onChangeText={(text) => setCustomExercise((prev) => ({ ...prev, description: text }))}
-              multiline
-              numberOfLines={3}
-              textAlignVertical="top"
-            />
-          </View>
-        </View>
-
-        <View style={styles.formRow}>
-          <View style={[styles.formSection, { flex: 1 }]}>
-            <Text style={styles.formLabel}>Category</Text>
-            <View style={styles.formInputContainer}>
-              <TextInput
-                style={styles.formInput}
-                placeholder="e.g., Dumbbell"
-                placeholderTextColor={theme.colors.secondaryText}
-                value={customExercise.category}
-                onChangeText={(text) => setCustomExercise((prev) => ({ ...prev, category: text }))}
-              />
-            </View>
-          </View>
-
-          <View style={[styles.formSection, { flex: 1, marginLeft: 12 }]}>
-            <Text style={styles.formLabel}>Target Muscles</Text>
-            <View style={styles.formInputContainer}>
-              <TextInput
-                style={styles.formInput}
-                placeholder="e.g., Quads, Glutes"
-                placeholderTextColor={theme.colors.secondaryText}
-                value={customExercise.muscle_groups}
-                onChangeText={(text) => setCustomExercise((prev) => ({ ...prev, muscle_groups: text }))}
-              />
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.formSection}>
-          <Text style={styles.formLabel}>Equipment Needed</Text>
-          <View style={styles.formInputContainer}>
-            <TextInput
-              style={styles.formInput}
-              placeholder="e.g., Dumbbells, Bench"
-              placeholderTextColor={theme.colors.secondaryText}
-              value={customExercise.equipment_needed}
-              onChangeText={(text) => setCustomExercise((prev) => ({ ...prev, equipment_needed: text }))}
-            />
-          </View>
-        </View>
-
-        <View style={styles.defaultsSection}>
-          <Text style={styles.defaultsSectionTitle}>Default Values</Text>
-          <View style={styles.defaultsGrid}>
-            <View style={styles.defaultItem}>
-              <Text style={styles.defaultItemLabel}>Sets</Text>
-              <View style={styles.defaultInputContainer}>
-                <TouchableOpacity
-                  style={styles.defaultAdjustBtn}
-                  onPress={() =>
-                    setCustomExercise((prev) => ({
-                      ...prev,
-                      default_sets: Math.max(1, prev.default_sets - 1),
-                    }))
-                  }
-                >
-                  <Ionicons name="remove" size={16} color={theme.colors.primary} />
-                </TouchableOpacity>
-                <Text style={styles.defaultValue}>{customExercise.default_sets}</Text>
-                <TouchableOpacity
-                  style={styles.defaultAdjustBtn}
-                  onPress={() =>
-                    setCustomExercise((prev) => ({
-                      ...prev,
-                      default_sets: prev.default_sets + 1,
-                    }))
-                  }
-                >
-                  <Ionicons name="add" size={16} color={theme.colors.primary} />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <View style={styles.defaultItem}>
-              <Text style={styles.defaultItemLabel}>Reps</Text>
-              <View style={styles.defaultInputContainer}>
-                <TouchableOpacity
-                  style={styles.defaultAdjustBtn}
-                  onPress={() =>
-                    setCustomExercise((prev) => ({
-                      ...prev,
-                      default_reps: Math.max(1, prev.default_reps - 1),
-                    }))
-                  }
-                >
-                  <Ionicons name="remove" size={16} color={theme.colors.primary} />
-                </TouchableOpacity>
-                <Text style={styles.defaultValue}>{customExercise.default_reps}</Text>
-                <TouchableOpacity
-                  style={styles.defaultAdjustBtn}
-                  onPress={() =>
-                    setCustomExercise((prev) => ({
-                      ...prev,
-                      default_reps: prev.default_reps + 1,
-                    }))
-                  }
-                >
-                  <Ionicons name="add" size={16} color={theme.colors.primary} />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <View style={styles.defaultItem}>
-              <Text style={styles.defaultItemLabel}>Rest (s)</Text>
-              <View style={styles.defaultInputContainer}>
-                <TouchableOpacity
-                  style={styles.defaultAdjustBtn}
-                  onPress={() =>
-                    setCustomExercise((prev) => ({
-                      ...prev,
-                      default_rest: Math.max(0, prev.default_rest - 15),
-                    }))
-                  }
-                >
-                  <Ionicons name="remove" size={16} color={theme.colors.primary} />
-                </TouchableOpacity>
-                <Text style={styles.defaultValue}>{customExercise.default_rest}</Text>
-                <TouchableOpacity
-                  style={styles.defaultAdjustBtn}
-                  onPress={() =>
-                    setCustomExercise((prev) => ({
-                      ...prev,
-                      default_rest: prev.default_rest + 15,
-                    }))
-                  }
-                >
-                  <Ionicons name="add" size={16} color={theme.colors.primary} />
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        <TouchableOpacity
-          style={[styles.submitBtn, !customExercise.name.trim() && styles.submitBtnDisabled]}
-          onPress={handleCreateCustomExercise}
-          disabled={!customExercise.name.trim() || isCreating}
-        >
-          <LinearGradient
-            colors={
-              customExercise.name.trim()
-                ? [theme.colors.primary, theme.colors.primaryDark || theme.colors.primary]
-                : [theme.colors.surface, theme.colors.surface]
-            }
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.submitBtnGradient}
-          >
-            {isCreating ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <>
-                <Ionicons name="checkmark-circle" size={20} color="#fff" />
-                <Text style={styles.submitBtnText}>Create Exercise</Text>
-              </>
-            )}
-          </LinearGradient>
+    <View style={styles.createFormContainer}>
+      <View style={styles.detailHeader}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => setViewMode('list')}>
+          <Ionicons name="arrow-back" size={24} color={theme.colors.primaryText} />
         </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        <Text style={styles.detailHeaderTitle}>Create Exercise</Text>
+        <View style={{ width: 40 }} />
+      </View>
+
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.createFormScroll}>
+          <View style={styles.formSection}>
+            <Text style={styles.formLabel}>Exercise Name *</Text>
+            <View style={styles.formInputContainer}>
+              <TextInput
+                style={styles.formInput}
+                placeholder="e.g., Bulgarian Split Squat"
+                placeholderTextColor={theme.colors.secondaryText}
+                value={customExercise.name}
+                onChangeText={(text) => setCustomExercise((prev) => ({ ...prev, name: text }))}
+              />
+            </View>
+          </View>
+
+          <View style={styles.formSection}>
+            <Text style={styles.formLabel}>Description</Text>
+            <View style={[styles.formInputContainer, styles.formInputMultiline]}>
+              <TextInput
+                style={[styles.formInput, styles.formInputArea]}
+                placeholder="Brief description..."
+                placeholderTextColor={theme.colors.secondaryText}
+                value={customExercise.description}
+                onChangeText={(text) => setCustomExercise((prev) => ({ ...prev, description: text }))}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+              />
+            </View>
+          </View>
+
+          <View style={styles.formRow}>
+            <View style={[styles.formSection, { flex: 1 }]}>
+              <Text style={styles.formLabel}>Category</Text>
+              <View style={styles.formInputContainer}>
+                <TextInput
+                  style={styles.formInput}
+                  placeholder="e.g., Dumbbell"
+                  placeholderTextColor={theme.colors.secondaryText}
+                  value={customExercise.category}
+                  onChangeText={(text) => setCustomExercise((prev) => ({ ...prev, category: text }))}
+                />
+              </View>
+            </View>
+
+            <View style={[styles.formSection, { flex: 1, marginLeft: 12 }]}>
+              <Text style={styles.formLabel}>Target Muscles</Text>
+              <View style={styles.formInputContainer}>
+                <TextInput
+                  style={styles.formInput}
+                  placeholder="e.g., Quads"
+                  placeholderTextColor={theme.colors.secondaryText}
+                  value={customExercise.muscle_groups}
+                  onChangeText={(text) => setCustomExercise((prev) => ({ ...prev, muscle_groups: text }))}
+                />
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.formSection}>
+            <Text style={styles.formLabel}>Equipment Needed</Text>
+            <View style={styles.formInputContainer}>
+              <TextInput
+                style={styles.formInput}
+                placeholder="e.g., Dumbbells, Bench"
+                placeholderTextColor={theme.colors.secondaryText}
+                value={customExercise.equipment_needed}
+                onChangeText={(text) => setCustomExercise((prev) => ({ ...prev, equipment_needed: text }))}
+              />
+            </View>
+          </View>
+
+          <View style={styles.defaultsSection}>
+            <Text style={styles.defaultsSectionTitle}>Default Values</Text>
+            <View style={styles.defaultsGrid}>
+              <View style={styles.defaultItem}>
+                <Text style={styles.defaultItemLabel}>Sets</Text>
+                <View style={styles.defaultInputContainer}>
+                  <TouchableOpacity
+                    style={styles.defaultAdjustBtn}
+                    onPress={() => setCustomExercise((prev) => ({ ...prev, default_sets: Math.max(1, prev.default_sets - 1) }))}
+                  >
+                    <Ionicons name="remove" size={16} color={theme.colors.primary} />
+                  </TouchableOpacity>
+                  <Text style={styles.defaultValue}>{customExercise.default_sets}</Text>
+                  <TouchableOpacity
+                    style={styles.defaultAdjustBtn}
+                    onPress={() => setCustomExercise((prev) => ({ ...prev, default_sets: prev.default_sets + 1 }))}
+                  >
+                    <Ionicons name="add" size={16} color={theme.colors.primary} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={styles.defaultItem}>
+                <Text style={styles.defaultItemLabel}>Reps</Text>
+                <View style={styles.defaultInputContainer}>
+                  <TouchableOpacity
+                    style={styles.defaultAdjustBtn}
+                    onPress={() => setCustomExercise((prev) => ({ ...prev, default_reps: Math.max(1, prev.default_reps - 1) }))}
+                  >
+                    <Ionicons name="remove" size={16} color={theme.colors.primary} />
+                  </TouchableOpacity>
+                  <Text style={styles.defaultValue}>{customExercise.default_reps}</Text>
+                  <TouchableOpacity
+                    style={styles.defaultAdjustBtn}
+                    onPress={() => setCustomExercise((prev) => ({ ...prev, default_reps: prev.default_reps + 1 }))}
+                  >
+                    <Ionicons name="add" size={16} color={theme.colors.primary} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={styles.defaultItem}>
+                <Text style={styles.defaultItemLabel}>Rest (s)</Text>
+                <View style={styles.defaultInputContainer}>
+                  <TouchableOpacity
+                    style={styles.defaultAdjustBtn}
+                    onPress={() => setCustomExercise((prev) => ({ ...prev, default_rest: Math.max(0, prev.default_rest - 15) }))}
+                  >
+                    <Ionicons name="remove" size={16} color={theme.colors.primary} />
+                  </TouchableOpacity>
+                  <Text style={styles.defaultValue}>{customExercise.default_rest}</Text>
+                  <TouchableOpacity
+                    style={styles.defaultAdjustBtn}
+                    onPress={() => setCustomExercise((prev) => ({ ...prev, default_rest: prev.default_rest + 15 }))}
+                  >
+                    <Ionicons name="add" size={16} color={theme.colors.primary} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.submitBtn, !customExercise.name.trim() && styles.submitBtnDisabled]}
+            onPress={handleCreateCustomExercise}
+            disabled={!customExercise.name.trim() || isCreating}
+          >
+            <LinearGradient
+              colors={
+                customExercise.name.trim()
+                  ? [theme.colors.primary, theme.colors.primaryDark || theme.colors.primary]
+                  : [theme.colors.surface, theme.colors.surface]
+              }
+              style={styles.submitBtnGradient}
+            >
+              {isCreating ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="checkmark-circle" size={20} color={customExercise.name.trim() ? '#fff' : theme.colors.secondaryText} />
+                  <Text style={[styles.submitBtnText, !customExercise.name.trim() && { color: theme.colors.secondaryText }]}>
+                    Create Exercise
+                  </Text>
+                </>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 
-  // Main content based on state
-  const renderContent = () => {
+  // Exercise Detail View (NOT a modal, just an animated view)
+  const renderDetailView = () => {
+    if (!detailExercise) return null;
+
+    const selected = isExerciseSelected(detailExercise);
+    const categoryIcon = detailExercise.category ? CATEGORY_ICONS[detailExercise.category] || 'fitness' : 'fitness';
+
+    return (
+      <Animated.View
+        style={[
+          styles.detailOverlay,
+          { transform: [{ translateX: detailSlideAnim }] },
+        ]}
+      >
+        {/* Detail Header */}
+        <View style={styles.detailHeader}>
+          <TouchableOpacity style={styles.backBtn} onPress={closeExerciseDetail}>
+            <Ionicons name="arrow-back" size={24} color={theme.colors.primaryText} />
+          </TouchableOpacity>
+          <Text style={styles.detailHeaderTitle} numberOfLines={1}>Exercise Details</Text>
+          <View style={{ width: 40 }} />
+        </View>
+
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.detailScrollContent}>
+          {/* Hero Section */}
+          <View style={styles.detailHero}>
+            {detailExercise.image ? (
+              <Image source={{ uri: detailExercise.image }} style={styles.detailHeroImage} />
+            ) : (
+              <LinearGradient
+                colors={[theme.colors.primary + '40', theme.colors.primary + '20']}
+                style={styles.detailHeroPlaceholder}
+              >
+                <View style={styles.detailHeroIconContainer}>
+                  <Ionicons name={categoryIcon as any} size={64} color={theme.colors.primary} />
+                </View>
+              </LinearGradient>
+            )}
+          </View>
+
+          {/* Exercise Name & Meta */}
+          <View style={styles.detailInfo}>
+            <Text style={styles.detailExerciseName}>{detailExercise.name}</Text>
+            
+            <View style={styles.detailBadges}>
+              {detailExercise.category && (
+                <View style={styles.detailBadge}>
+                  <Ionicons name={categoryIcon as any} size={14} color={theme.colors.primary} />
+                  <Text style={styles.detailBadgeText}>{detailExercise.category}</Text>
+                </View>
+              )}
+              {detailExercise.muscle_groups && (
+                <View style={styles.detailBadge}>
+                  <Ionicons name="body-outline" size={14} color={theme.colors.primary} />
+                  <Text style={styles.detailBadgeText}>{detailExercise.muscle_groups}</Text>
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* Stats */}
+          <View style={styles.detailStats}>
+            <View style={styles.detailStatCard}>
+              <Ionicons name="layers-outline" size={24} color={theme.colors.primary} />
+              <Text style={styles.detailStatValue}>{detailExercise.default_sets || 3}</Text>
+              <Text style={styles.detailStatLabel}>Sets</Text>
+            </View>
+            <View style={styles.detailStatCard}>
+              <Ionicons name="repeat-outline" size={24} color="#f59e0b" />
+              <Text style={styles.detailStatValue}>{detailExercise.default_reps || 10}</Text>
+              <Text style={styles.detailStatLabel}>Reps</Text>
+            </View>
+            <View style={styles.detailStatCard}>
+              <Ionicons name="timer-outline" size={24} color="#22c55e" />
+              <Text style={styles.detailStatValue}>{detailExercise.default_rest || 60}s</Text>
+              <Text style={styles.detailStatLabel}>Rest</Text>
+            </View>
+          </View>
+
+          {/* Description */}
+          {detailExercise.description && (
+            <View style={styles.detailSection}>
+              <Text style={styles.detailSectionTitle}>About This Exercise</Text>
+              <Text style={styles.detailDescription}>{detailExercise.description}</Text>
+            </View>
+          )}
+
+          {/* Equipment */}
+          {detailExercise.equipment_needed && (
+            <View style={styles.detailSection}>
+              <Text style={styles.detailSectionTitle}>Equipment Needed</Text>
+              <View style={styles.detailEquipmentRow}>
+                <Ionicons name="barbell-outline" size={20} color={theme.colors.primary} />
+                <Text style={styles.detailEquipmentText}>{detailExercise.equipment_needed}</Text>
+              </View>
+            </View>
+          )}
+
+          {/* Instructions */}
+          {detailExercise.instructions && (
+            <View style={styles.detailSection}>
+              <Text style={styles.detailSectionTitle}>How To Perform</Text>
+              {(typeof detailExercise.instructions === 'string'
+                ? detailExercise.instructions.split('\n').filter(Boolean)
+                : detailExercise.instructions
+              ).map((step: string, index: number) => (
+                <View key={index} style={styles.detailInstructionItem}>
+                  <View style={styles.detailInstructionNumber}>
+                    <Text style={styles.detailInstructionNumberText}>{index + 1}</Text>
+                  </View>
+                  <Text style={styles.detailInstructionText}>{step}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          <View style={{ height: 100 }} />
+        </ScrollView>
+
+        {/* Bottom Add Button */}
+        <View style={styles.detailBottomCTA}>
+          <TouchableOpacity
+            style={[styles.detailAddBtn, selected && styles.detailAddBtnSelected]}
+            onPress={() => {
+              handleAddExercise(detailExercise);
+              closeExerciseDetail();
+            }}
+          >
+            <LinearGradient
+              colors={selected ? ['#22c55e', '#16a34a'] : [theme.colors.primary, theme.colors.primaryDark || theme.colors.primary]}
+              style={styles.detailAddBtnGradient}
+            >
+              <Ionicons name={selected ? 'checkmark-circle' : 'add-circle'} size={22} color="#fff" />
+              <Text style={styles.detailAddBtnText}>
+                {selected ? 'Added to Workout' : 'Add to Workout'}
+              </Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
+    );
+  };
+
+  // Main List Content
+  const renderListContent = () => {
     if (isLoading) return renderLoadingState();
     if (error) return renderErrorState();
     if (exercises.length === 0) return renderEmptyState();
@@ -844,64 +956,45 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
         contentContainerStyle={styles.exerciseList}
         showsVerticalScrollIndicator={false}
         ItemSeparatorComponent={() => <View style={styles.exerciseSeparator} />}
-        initialNumToRender={10}
-        maxToRenderPerBatch={10}
-        windowSize={5}
-        removeClippedSubviews={Platform.OS === 'android'}
       />
     );
   };
 
+  // Main List View
+  const renderListView = () => (
+    <View style={styles.listViewContainer}>
+      {renderListHeader()}
+      {renderTabs()}
+      {renderSearchBar()}
+      {renderCategoryFilters()}
+      {renderExtendedFilters()}
+      {renderCreateButton()}
+      <View style={styles.listContainer}>{renderListContent()}</View>
+    </View>
+  );
+
   return (
-    <>
-      <Modal visible={visible} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
-        <View style={styles.modalContainer}>
-          {/* Backdrop */}
-          <Animated.View style={[styles.backdrop, { opacity: backdropAnim }]}>
-            <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} activeOpacity={1} />
-          </Animated.View>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="none"
+      onRequestClose={onClose}
+      statusBarTranslucent
+    >
+      <View style={styles.modalContainer}>
+        <Animated.View style={[styles.backdrop, { opacity: backdropAnim }]}>
+          <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} activeOpacity={1} />
+        </Animated.View>
 
-          {/* Main Sheet */}
-          <Animated.View
-            style={[
-              styles.sheet,
-              {
-                transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
-              },
-            ]}
-          >
-            {showCreateForm ? (
-              <>
-                {renderHeader()}
-                {renderCreateForm()}
-              </>
-            ) : (
-              <>
-                {renderHeader()}
-                {renderTabs()}
-                {renderSearchBar()}
-                {renderCategoryFilters()}
-                {renderExtendedFilters()}
-                {renderCreateButton()}
-
-                <View style={styles.listContainer}>{renderContent()}</View>
-              </>
-            )}
-          </Animated.View>
-        </View>
-      </Modal>
-
-      {/* Exercise Detail Modal - Only render when visibility is true */}
-      {exerciseDetailVisible && selectedExerciseForDetail && (
-        <ExerciseDetail
-          visible={exerciseDetailVisible}
-          exercise={selectedExerciseForDetail}
-          onClose={handleCloseDetail}
-          onAddExercise={handleAddFromDetail}
-          isSelected={isExerciseSelected(selectedExerciseForDetail)}
-        />
-      )}
-    </>
+        <Animated.View style={[styles.sheet, { transform: [{ translateY: slideAnim }] }]}>
+          {/* Main content based on view mode */}
+          {viewMode === 'create' ? renderCreateForm() : renderListView()}
+          
+          {/* Detail overlay - slides from right */}
+          {renderDetailView()}
+        </Animated.View>
+      </View>
+    </Modal>
   );
 };
 
@@ -921,6 +1014,9 @@ const createStyles = (theme: Theme) =>
       borderTopRightRadius: 24,
       height: MODAL_HEIGHT,
       overflow: 'hidden',
+    },
+    listViewContainer: {
+      flex: 1,
     },
     header: {
       paddingTop: 12,
@@ -949,7 +1045,6 @@ const createStyles = (theme: Theme) =>
       fontSize: 24,
       fontWeight: '700',
       color: theme.colors.primaryText,
-      letterSpacing: -0.5,
     },
     headerSubtitle: {
       fontSize: 13,
@@ -1014,10 +1109,6 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       fontSize: 15,
       color: theme.colors.primaryText,
-      paddingVertical: 0,
-    },
-    clearSearchBtn: {
-      padding: 2,
     },
     filterToggleBtn: {
       width: 44,
@@ -1051,7 +1142,6 @@ const createStyles = (theme: Theme) =>
     },
     categoryFiltersContent: {
       paddingHorizontal: 20,
-      gap: 8,
     },
     categoryFilterPill: {
       flexDirection: 'row',
@@ -1092,12 +1182,10 @@ const createStyles = (theme: Theme) =>
       fontWeight: '600',
       color: theme.colors.secondaryText,
       textTransform: 'uppercase',
-      letterSpacing: 0.5,
       marginBottom: 10,
     },
     muscleChipsRow: {
       flexDirection: 'row',
-      flexWrap: 'nowrap',
       gap: 8,
       paddingBottom: 8,
     },
@@ -1203,7 +1291,6 @@ const createStyles = (theme: Theme) =>
     },
     exerciseContent: {
       flex: 1,
-      justifyContent: 'center',
     },
     exerciseName: {
       fontSize: 16,
@@ -1216,7 +1303,6 @@ const createStyles = (theme: Theme) =>
     },
     exerciseMetaRow: {
       flexDirection: 'row',
-      alignItems: 'center',
       flexWrap: 'wrap',
       gap: 6,
     },
@@ -1271,7 +1357,7 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
     },
     addButtonSelected: {
-      backgroundColor: theme.colors.success || '#22c55e',
+      backgroundColor: '#22c55e',
     },
     loadingState: {
       flex: 1,
@@ -1317,7 +1403,6 @@ const createStyles = (theme: Theme) =>
       justifyContent: 'center',
       alignItems: 'center',
       paddingHorizontal: 40,
-      gap: 8,
     },
     emptyIconContainer: {
       width: 80,
@@ -1326,65 +1411,218 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.colors.surface,
       justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: 8,
+      marginBottom: 16,
     },
     emptyTitle: {
       fontSize: 18,
       fontWeight: '600',
       color: theme.colors.primaryText,
+      marginBottom: 8,
     },
     emptySubtitle: {
       fontSize: 14,
       color: theme.colors.secondaryText,
       textAlign: 'center',
-      lineHeight: 20,
     },
-    emptyCreateBtn: {
+
+    // Detail Overlay (slides from right)
+    detailOverlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: theme.colors.background,
+    },
+    detailHeader: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginTop: 16,
-      paddingVertical: 12,
-      paddingHorizontal: 20,
-      backgroundColor: theme.colors.primary,
-      borderRadius: 12,
-      gap: 8,
-    },
-    emptyCreateBtnText: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: '#fff',
-    },
-    createFormWrapper: {
-      flex: 1,
-    },
-    createFormScroll: {
-      paddingHorizontal: 20,
-      paddingBottom: 40,
-    },
-    createFormHeader: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
       justifyContent: 'space-between',
-      paddingTop: 8,
-      paddingBottom: 24,
+      paddingHorizontal: 16,
+      paddingTop: 16,
+      paddingBottom: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
     },
-    createFormTitle: {
-      fontSize: 22,
-      fontWeight: '700',
-      color: theme.colors.primaryText,
-    },
-    createFormSubtitle: {
-      fontSize: 14,
-      color: theme.colors.secondaryText,
-      marginTop: 2,
-    },
-    createFormCloseBtn: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
+    backBtn: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
       backgroundColor: theme.colors.surface,
       justifyContent: 'center',
       alignItems: 'center',
+    },
+    detailHeaderTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: theme.colors.primaryText,
+      flex: 1,
+      textAlign: 'center',
+    },
+    detailScrollContent: {
+      paddingBottom: 20,
+    },
+    detailHero: {
+      height: 220,
+      backgroundColor: theme.colors.surface,
+    },
+    detailHeroImage: {
+      width: '100%',
+      height: '100%',
+      resizeMode: 'cover',
+    },
+    detailHeroPlaceholder: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    detailHeroIconContainer: {
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+      backgroundColor: theme.colors.surface,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    detailInfo: {
+      padding: 20,
+    },
+    detailExerciseName: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: theme.colors.primaryText,
+      marginBottom: 12,
+    },
+    detailBadges: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    detailBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.colors.primarySoft,
+      paddingVertical: 6,
+      paddingHorizontal: 12,
+      borderRadius: 20,
+      gap: 6,
+    },
+    detailBadgeText: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: theme.colors.primary,
+    },
+    detailStats: {
+      flexDirection: 'row',
+      paddingHorizontal: 20,
+      gap: 12,
+      marginBottom: 20,
+    },
+    detailStatCard: {
+      flex: 1,
+      backgroundColor: theme.colors.surface,
+      borderRadius: 16,
+      padding: 16,
+      alignItems: 'center',
+    },
+    detailStatValue: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: theme.colors.primaryText,
+      marginTop: 8,
+    },
+    detailStatLabel: {
+      fontSize: 12,
+      color: theme.colors.secondaryText,
+      marginTop: 2,
+    },
+    detailSection: {
+      paddingHorizontal: 20,
+      marginBottom: 20,
+    },
+    detailSectionTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: theme.colors.primaryText,
+      marginBottom: 12,
+    },
+    detailDescription: {
+      fontSize: 15,
+      lineHeight: 24,
+      color: theme.colors.secondaryText,
+    },
+    detailEquipmentRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.colors.surface,
+      padding: 16,
+      borderRadius: 12,
+      gap: 12,
+    },
+    detailEquipmentText: {
+      fontSize: 15,
+      color: theme.colors.primaryText,
+      flex: 1,
+    },
+    detailInstructionItem: {
+      flexDirection: 'row',
+      marginBottom: 12,
+      gap: 12,
+    },
+    detailInstructionNumber: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: theme.colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    detailInstructionNumberText: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: '#fff',
+    },
+    detailInstructionText: {
+      flex: 1,
+      fontSize: 15,
+      lineHeight: 22,
+      color: theme.colors.primaryText,
+    },
+    detailBottomCTA: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      padding: 20,
+      paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+      backgroundColor: theme.colors.background,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+    },
+    detailAddBtn: {
+      borderRadius: 16,
+      overflow: 'hidden',
+    },
+    detailAddBtnSelected: {},
+    detailAddBtnGradient: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 16,
+      gap: 10,
+    },
+    detailAddBtnText: {
+      fontSize: 17,
+      fontWeight: '700',
+      color: '#fff',
+    },
+
+    // Create Form
+    createFormContainer: {
+      flex: 1,
+    },
+    createFormScroll: {
+      padding: 20,
     },
     formSection: {
       marginBottom: 16,
@@ -1398,7 +1636,6 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.secondaryText,
       marginBottom: 8,
       textTransform: 'uppercase',
-      letterSpacing: 0.3,
     },
     formInputContainer: {
       backgroundColor: theme.colors.surface,
@@ -1431,7 +1668,6 @@ const createStyles = (theme: Theme) =>
       fontWeight: '600',
       color: theme.colors.secondaryText,
       textTransform: 'uppercase',
-      letterSpacing: 0.3,
       marginBottom: 16,
     },
     defaultsGrid: {
@@ -1475,7 +1711,7 @@ const createStyles = (theme: Theme) =>
       overflow: 'hidden',
     },
     submitBtnDisabled: {
-      opacity: 0.5,
+      opacity: 0.6,
     },
     submitBtnGradient: {
       flexDirection: 'row',
