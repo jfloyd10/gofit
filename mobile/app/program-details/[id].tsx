@@ -458,7 +458,7 @@ export default function ProgramDetailScreen() {
                   style={styles.sessionCard}
                   activeOpacity={0.7}
                   onPress={() => {
-                    // Future: Navigate to session detail
+                    router.push(`/session/${session.id}`);
                   }}
                 >
                   <View style={styles.sessionDayBadge}>
