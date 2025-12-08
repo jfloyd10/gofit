@@ -255,12 +255,9 @@ class SessionBlock(models.Model):
     """
     SCHEME_CHOICES = (
         ('STANDARD', 'Standard List'),
-        ('CIRCUIT', 'Circuit'),
-        ('INTERVAL', 'Interval'),
         ('EMOM', 'Every Minute on the Minute'),
         ('AMRAP', 'As Many Rounds as Possible'),
-        ('RFT', 'Rounds for Time'),
-        ('TABATA', 'Tabata'),
+        ('RFT', 'Rounds for Time')
     )
 
     session = models.ForeignKey(Session, related_name="blocks", on_delete=models.CASCADE)
@@ -413,6 +410,72 @@ class ActivityPrescription(models.Model):
 
     def __str__(self):
         return f'{self.id}'
+    
+
+    @property
+    def session_detail_ui_config(self):
+        """
+        Infers which UI elements should be visible based on non-null data.
+        Returns a list of field keys to instruct the frontend what to render.
+        """
+        config = {
+            "primary_component": self.primary_metric, # 'reps', 'time', 'distance', etc.
+            "secondary_components": [],
+            "meta_badges": []
+        }
+
+        # 1. Check Weight (Strength context)
+        # We check for not None, because 0.00 might be a valid weight in some edge cases, 
+        # but usually we check > 0. Let's assume explicit None means "no weight".
+        if self.weight is not None:
+            config["secondary_components"].append({
+                "type": "weight",
+                "value": self.weight,
+                "label": "kg",
+                "is_per_side": self.is_per_side
+            })
+
+        # 2. Check Distance (if not primary)
+        if self.distance and self.primary_metric != "distance":
+            config["secondary_components"].append({
+                "type": "distance", 
+                "value": self.distance, 
+                "label": "m"
+            })
+
+        # 3. Check Duration/Time (if not primary)
+        # Useful for "Plank (Time primary) + Weight (Secondary)" 
+        # or "Run (Distance primary) + Time cap (Secondary)"
+        if self.duration_seconds and self.primary_metric != "time":
+             config["secondary_components"].append({
+                "type": "duration", 
+                "value": self.duration_seconds, 
+                "label": "s"
+            })
+
+        # 4. Intensity Logic (RPE, %1RM, Zone, Pace)
+        if self.intensity_type and self.intensity_value:
+            config["meta_badges"].append({
+                "type": "intensity",
+                "label": self.get_intensity_type_display(), # e.g., "RPE"
+                "value": self.intensity_value               # e.g., "8"
+            })
+            
+        # 5. Tempo (Specific to lifting)
+        if self.tempo:
+            config["meta_badges"].append({
+                "type": "tempo",
+                "value": self.tempo
+            })
+
+        # 6. Calories (Row/Ski erg)
+        if self.calories and self.primary_metric != "calories":
+             config["secondary_components"].append({
+                "type": "calories",
+                "value": self.calories
+            })
+
+        return config
 
 
     class Meta:
