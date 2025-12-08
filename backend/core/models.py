@@ -250,8 +250,6 @@ class SessionBlock(models.Model):
     Examples:
     - "Warmup" (Standard list)
     - "Metcon A" (3 Rounds For Time)
-    - "Strength" (5x5 Back Squat)
-    - "Intervals" (Run 400m, Rest 1:00, repeat 4x)
     """
     SCHEME_CHOICES = (
         ('STANDARD', 'Standard List'),
@@ -347,15 +345,7 @@ class ActivityPrescription(models.Model):
         ("heart_rate_zone", "HR Zone"),
         ("heart_rate", "Heart Rate"),
         ("pace", "Pace"),
-    )
-
-    PRIMARY_METRIC_CHOICES = (
-        ("reps", "Reps"),
-        ("time", "Time"),
-        ("distance", "Distance"),
-        ("calories", "Calories"),
-        ("weight", "Weight"),
-        ("none", "None"),
+        ("watts", "Watts"),
     )
 
     id = models.AutoField(primary_key=True)
@@ -363,7 +353,6 @@ class ActivityPrescription(models.Model):
             
     set_number = models.PositiveIntegerField()
     set_tag = models.CharField(max_length=1, choices=TAG_CHOICES, default='N')
-    primary_metric = models.CharField(max_length=20, choices=PRIMARY_METRIC_CHOICES, default="reps")
     prescription_notes = models.TextField(blank=True, null=True)
 
     ## WEIGHTLIFTING BASED FIELDS ##
@@ -384,8 +373,6 @@ class ActivityPrescription(models.Model):
     distance = models.DecimalField(max_digits=12, decimal_places=4, blank=True, null=True, help_text="Always stored in meters. Frontend converts to miles/km/yards.")
     calories = models.PositiveIntegerField(blank=True, null=True, help_text="Target calories for Row/Ski/Bike")
 
-    # Extra data (For all other)
-    extra_data = models.JSONField(blank=True, null=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -419,7 +406,7 @@ class ActivityPrescription(models.Model):
         Returns a list of field keys to instruct the frontend what to render.
         """
         config = {
-            "primary_component": self.primary_metric, # 'reps', 'time', 'distance', etc.
+            "primary_component": [],
             "secondary_components": [],
             "meta_badges": []
         }
@@ -436,7 +423,7 @@ class ActivityPrescription(models.Model):
             })
 
         # 2. Check Distance (if not primary)
-        if self.distance and self.primary_metric != "distance":
+        if self.distance:
             config["secondary_components"].append({
                 "type": "distance", 
                 "value": self.distance, 
@@ -446,7 +433,7 @@ class ActivityPrescription(models.Model):
         # 3. Check Duration/Time (if not primary)
         # Useful for "Plank (Time primary) + Weight (Secondary)" 
         # or "Run (Distance primary) + Time cap (Secondary)"
-        if self.duration_seconds and self.primary_metric != "time":
+        if self.duration_seconds:
              config["secondary_components"].append({
                 "type": "duration", 
                 "value": self.duration_seconds, 
@@ -469,7 +456,7 @@ class ActivityPrescription(models.Model):
             })
 
         # 6. Calories (Row/Ski erg)
-        if self.calories and self.primary_metric != "calories":
+        if self.calories:
              config["secondary_components"].append({
                 "type": "calories",
                 "value": self.calories
