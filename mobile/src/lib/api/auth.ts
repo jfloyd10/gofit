@@ -1,6 +1,6 @@
 import { AuthUser } from '../types/user'; 
-export const API_BASE_URL_1 = 'https://rural-zulma-unhued.ngrok-free.dev/api/v1';
-export const API_BASE_URL = 'http://192.168.1.199:8000/api/v1';
+export const API_BASE_URL = 'https://rural-zulma-unhued.ngrok-free.dev/api/v1';
+export const API_BASE_URL_1 = 'http://192.168.1.199:8000/api/v1';
 
 export interface AuthTokens {
   access: string;
