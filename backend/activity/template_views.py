@@ -35,6 +35,7 @@ class FitFileUploadView(View):
         context = {
             'recent_imports': recent_imports,
             'page_title': 'Upload FIT File',
+            'active_nav': 'upload',
         }
         return render(request, self.template_name, context)
     
@@ -238,6 +239,7 @@ class WorkoutAdminView(View):
             'workouts': workouts,
             'stats': stats,
             'page_title': 'Workout Admin',
+            'active_nav': 'admin',
         }
         return render(request, self.template_name, context)
     
@@ -344,6 +346,8 @@ class WorkoutDetailView(View):
         """Display workout detail."""
         from django.shortcuts import get_object_or_404
         from activity.models import RecordDataPoint
+        from decimal import Decimal
+        import json
         
         workout = get_object_or_404(
             WorkoutLog.objects.select_related('session', 'session__week', 'session__week__program'),
@@ -373,10 +377,23 @@ class WorkoutDetailView(View):
             
             # Get sampled records
             record_ids = list(records_qs.values_list('id', flat=True)[::sample_rate])
-            records_sample = list(records_qs.filter(id__in=record_ids).values(
+            records_raw = list(records_qs.filter(id__in=record_ids).values(
                 'elapsed_seconds', 'heart_rate', 'speed', 'power', 
                 'cadence', 'altitude', 'latitude', 'longitude'
             ))
+            
+            # Convert Decimal values to float for JSON serialization
+            for record in records_raw:
+                converted = {}
+                for key, value in record.items():
+                    if isinstance(value, Decimal):
+                        converted[key] = float(value)
+                    else:
+                        converted[key] = value
+                records_sample.append(converted)
+        
+        # Serialize to JSON string for safe JavaScript embedding
+        records_json = json.dumps(records_sample)
         
         # Get FIT import info if exists
         fit_import = FitFileImport.objects.filter(workout_log=workout).first()
@@ -395,10 +412,12 @@ class WorkoutDetailView(View):
             'activity_logs': activity_logs,
             'laps': laps,
             'devices': devices,
-            'records_sample': records_sample,
+            'records_json': records_json,
+            'has_records': records_count > 0,
             'fit_import': fit_import,
             'stats': stats,
             'page_title': workout.title or 'Workout Detail',
+            'active_nav': 'admin',
         }
         return render(request, self.template_name, context)
 
