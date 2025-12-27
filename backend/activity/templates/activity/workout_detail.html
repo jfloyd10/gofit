@@ -1064,12 +1064,42 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
     // Toggle activity expansion
     function toggleActivity(id) {
         const card = document.getElementById(id);
         card.classList.toggle('expanded');
     }
+
+    {% if map_coords_json %}
+    document.addEventListener('DOMContentLoaded', function() {
+        const mapCoords = JSON.parse('{{ map_coords_json|escapejs }}');
+        
+        if (mapCoords && mapCoords.length > 0) {
+            // Initialize map (center will be reset by fitBounds)
+            const map = L.map('workout-map');
+            
+            // Add OpenStreetMap tiles
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+
+            // Create polyline
+            const polyline = L.polyline(mapCoords, {
+                color: 'var(--accent-primary)', // Use your CSS variable color
+                weight: 4,
+                opacity: 0.8,
+                lineJoin: 'round'
+            }).addTo(map);
+
+            // Fit map to route
+            map.fitBounds(polyline.getBounds(), {
+                padding: [50, 50] // Add some padding around the route
+            });
+        }
+    });
+    {% endif %}
     
     {% if has_records %}
     // Chart data
