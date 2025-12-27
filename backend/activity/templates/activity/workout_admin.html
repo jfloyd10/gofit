@@ -4,207 +4,584 @@
 
 {% block extra_css %}
 <style>
-    .page-header {
-        margin-bottom: 2rem;
-    }
-    
-    .page-header h1 {
-        font-size: 1.75rem;
-        font-weight: 700;
-        margin-bottom: 0.5rem;
-    }
-    
-    .page-header p {
-        color: #6b7280;
-    }
-    
-    /* Stats */
-    .stats-grid {
+    /* ==================== PAGE LAYOUT ==================== */
+    .activities-page {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-        gap: 1rem;
-        margin-bottom: 2rem;
+        grid-template-columns: 280px 1fr;
+        gap: 2rem;
+        align-items: start;
     }
     
-    .stat-card {
-        background: white;
-        padding: 1.25rem;
-        border-radius: 0.75rem;
-        border: 1px solid #e5e7eb;
+    @media (max-width: 1024px) {
+        .activities-page {
+            grid-template-columns: 1fr;
+        }
+        
+        .sidebar {
+            order: -1;
+        }
+    }
+    
+    /* ==================== SIDEBAR ==================== */
+    .sidebar {
+        position: sticky;
+        top: 88px;
+    }
+    
+    /* Stats Cards */
+    .stats-panel {
+        background: var(--bg-card);
+        border-radius: var(--radius-xl);
+        border: 1px solid var(--border-subtle);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .stats-panel-title {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--text-muted);
+        margin-bottom: 1.25rem;
+    }
+    
+    .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem 0;
+        border-bottom: 1px solid var(--border-subtle);
+    }
+    
+    .stat-item:first-of-type {
+        padding-top: 0;
+    }
+    
+    .stat-item:last-of-type {
+        padding-bottom: 0;
+        border-bottom: none;
+    }
+    
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        background: var(--bg-elevated);
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+    
+    .stat-content {
+        flex: 1;
     }
     
     .stat-value {
-        font-size: 1.75rem;
+        font-size: 1.5rem;
         font-weight: 700;
-        color: #1a1a2e;
+        color: var(--text-primary);
+        line-height: 1.2;
+        font-family: 'JetBrains Mono', monospace;
     }
     
     .stat-label {
-        font-size: 0.875rem;
-        color: #6b7280;
+        font-size: 0.8125rem;
+        color: var(--text-muted);
     }
     
     /* Danger Zone */
-    .danger-zone {
-        background: #fef2f2;
-        border: 1px solid #fecaca;
-        border-radius: 0.75rem;
+    .danger-panel {
+        background: rgba(239, 68, 68, 0.05);
+        border: 1px solid rgba(239, 68, 68, 0.15);
+        border-radius: var(--radius-xl);
         padding: 1.5rem;
-        margin-bottom: 2rem;
     }
     
-    .danger-zone h3 {
-        color: #991b1b;
-        font-size: 1rem;
+    .danger-panel-title {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--color-error);
         margin-bottom: 1rem;
         display: flex;
         align-items: center;
         gap: 0.5rem;
     }
     
-    .danger-buttons {
+    .danger-actions {
         display: flex;
-        gap: 1rem;
-        flex-wrap: wrap;
+        flex-direction: column;
+        gap: 0.75rem;
     }
     
-    /* Workouts Table */
-    .workouts-section {
-        background: white;
-        border-radius: 0.75rem;
-        border: 1px solid #e5e7eb;
-        overflow: hidden;
-    }
-    
-    .section-header {
-        padding: 1rem 1.5rem;
-        border-bottom: 1px solid #e5e7eb;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-    
-    .section-header h2 {
-        font-size: 1.125rem;
-        font-weight: 600;
-    }
-    
-    .workouts-table {
+    .danger-btn {
         width: 100%;
-        border-collapse: collapse;
+        padding: 0.75rem 1rem;
+        background: transparent;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        color: #f87171;
+        border-radius: var(--radius-md);
+        font-family: inherit;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
     }
     
-    .workouts-table th,
-    .workouts-table td {
-        padding: 0.875rem 1rem;
-        text-align: left;
-        border-bottom: 1px solid #f3f4f6;
+    .danger-btn:hover {
+        background: rgba(239, 68, 68, 0.1);
+        border-color: rgba(239, 68, 68, 0.5);
     }
     
-    .workouts-table th {
-        background: #f9fafb;
+    .danger-btn.primary {
+        background: var(--color-error);
+        border-color: var(--color-error);
+        color: white;
+    }
+    
+    .danger-btn.primary:hover {
+        background: #dc2626;
+    }
+    
+    /* ==================== MAIN CONTENT ==================== */
+    .main-panel {
+        min-width: 0;
+    }
+    
+    /* Page Header */
+    .page-header {
+        margin-bottom: 2rem;
+    }
+    
+    .page-title {
+        font-size: 2.5rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        margin-bottom: 0.5rem;
+        background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .page-subtitle {
+        color: var(--text-secondary);
+        font-size: 1.1rem;
+    }
+    
+    /* Activities List Header */
+    .activities-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-subtle);
+    }
+    
+    .activities-title {
+        font-size: 1rem;
         font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .activities-count {
+        background: var(--bg-elevated);
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
         font-size: 0.75rem;
-        text-transform: uppercase;
-        color: #6b7280;
+        color: var(--text-muted);
+        font-family: 'JetBrains Mono', monospace;
     }
     
-    .workouts-table tr:hover {
-        background: #f9fafb;
+    .selection-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
     }
     
-    .workouts-table input[type="checkbox"] {
-        width: 18px;
-        height: 18px;
+    .selected-count {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+    }
+    
+    .selected-count strong {
+        color: var(--accent-primary);
+        font-family: 'JetBrains Mono', monospace;
+    }
+    
+    /* Activity Card */
+    .activity-card {
+        display: grid;
+        grid-template-columns: 48px 1fr auto;
+        gap: 1rem;
+        align-items: center;
+        padding: 1.25rem;
+        background: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        margin-bottom: 0.75rem;
+        transition: all 0.2s ease;
+        position: relative;
+    }
+    
+    .activity-card:hover {
+        border-color: var(--border-medium);
+        background: var(--bg-card-hover);
+        transform: translateX(4px);
+    }
+    
+    .activity-card.selected {
+        border-color: var(--accent-primary);
+        background: rgba(255, 87, 34, 0.05);
+    }
+    
+    /* Checkbox */
+    .activity-checkbox {
+        position: absolute;
+        left: -9999px;
+    }
+    
+    .checkbox-wrapper {
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         cursor: pointer;
     }
     
-    .workout-title {
-        font-weight: 500;
-        color: #1a1a2e;
-    }
-    
-    .workout-title:hover {
-        color: #6366f1;
-    }
-    
-    .workout-meta {
-        font-size: 0.875rem;
-        color: #6b7280;
-    }
-    
-    .sport-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.25rem;
-        padding: 0.25rem 0.5rem;
-        border-radius: 9999px;
-        font-size: 0.75rem;
-        font-weight: 500;
-    }
-    
-    .sport-badge.running { background: #dbeafe; color: #1e40af; }
-    .sport-badge.cycling { background: #fef3c7; color: #92400e; }
-    .sport-badge.swimming { background: #cffafe; color: #0e7490; }
-    .sport-badge.strength { background: #fce7f3; color: #9d174d; }
-    .sport-badge.other { background: #f3f4f6; color: #4b5563; }
-    
-    .empty-state {
-        padding: 3rem;
-        text-align: center;
-        color: #9ca3af;
-    }
-    
-    .action-bar {
-        padding: 1rem 1.5rem;
-        background: #f9fafb;
-        border-top: 1px solid #e5e7eb;
+    .checkbox-custom {
+        width: 22px;
+        height: 22px;
+        border: 2px solid var(--border-medium);
+        border-radius: 6px;
         display: flex;
-        justify-content: space-between;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+        color: transparent;
+        font-size: 0.875rem;
+    }
+    
+    .activity-card:hover .checkbox-custom {
+        border-color: var(--text-muted);
+    }
+    
+    .activity-checkbox:checked + .checkbox-wrapper .checkbox-custom {
+        background: var(--accent-primary);
+        border-color: var(--accent-primary);
+        color: white;
+    }
+    
+    /* Activity Content */
+    .activity-content {
+        display: grid;
+        grid-template-columns: 56px 1fr;
+        gap: 1rem;
+        align-items: center;
+        text-decoration: none;
+        color: inherit;
+    }
+    
+    .activity-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.75rem;
+        position: relative;
+    }
+    
+    .activity-icon.running {
+        background: linear-gradient(135deg, var(--color-running), #60a5fa);
+    }
+    
+    .activity-icon.cycling {
+        background: linear-gradient(135deg, var(--color-cycling), #fbbf24);
+    }
+    
+    .activity-icon.swimming {
+        background: linear-gradient(135deg, var(--color-swimming), #22d3ee);
+    }
+    
+    .activity-icon.strength {
+        background: linear-gradient(135deg, var(--color-strength), #f472b6);
+    }
+    
+    .activity-icon.walking {
+        background: linear-gradient(135deg, var(--color-walking), #34d399);
+    }
+    
+    .activity-icon.hiking {
+        background: linear-gradient(135deg, var(--color-hiking), #a3e635);
+    }
+    
+    .activity-icon.other {
+        background: linear-gradient(135deg, var(--color-other), #a78bfa);
+    }
+    
+    .activity-info {
+        min-width: 0;
+    }
+    
+    .activity-name {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .activity-meta {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    
+    .activity-date {
+        font-size: 0.8125rem;
+        color: var(--text-muted);
+    }
+    
+    .activity-id {
+        font-size: 0.6875rem;
+        font-family: 'JetBrains Mono', monospace;
+        color: var(--text-muted);
+        background: var(--bg-elevated);
+        padding: 0.125rem 0.5rem;
+        border-radius: 4px;
+    }
+    
+    /* Activity Stats */
+    .activity-stats {
+        display: flex;
+        gap: 1.5rem;
         align-items: center;
     }
     
-    .select-info {
-        font-size: 0.875rem;
-        color: #6b7280;
+    .activity-stat {
+        text-align: right;
+    }
+    
+    .stat-number {
+        font-size: 1.125rem;
+        font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
+        color: var(--text-primary);
+        line-height: 1.2;
+    }
+    
+    .stat-unit {
+        font-size: 0.6875rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+    }
+    
+    /* Activity Actions */
+    .activity-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-left: 1rem;
+        padding-left: 1rem;
+        border-left: 1px solid var(--border-subtle);
+    }
+    
+    .action-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: var(--radius-sm);
+        background: var(--bg-elevated);
+        border: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        transition: all 0.2s ease;
+        text-decoration: none;
+    }
+    
+    .action-btn:hover {
+        background: var(--bg-card);
+        color: var(--text-primary);
+    }
+    
+    .action-btn.danger:hover {
+        background: rgba(239, 68, 68, 0.1);
+        color: var(--color-error);
+    }
+    
+    /* Bulk Actions Bar */
+    .bulk-actions {
+        position: sticky;
+        bottom: 1rem;
+        background: var(--bg-card);
+        border: 1px solid var(--border-medium);
+        border-radius: var(--radius-lg);
+        padding: 1rem 1.5rem;
+        display: none;
+        align-items: center;
+        justify-content: space-between;
+        box-shadow: var(--shadow-lg);
+        backdrop-filter: blur(10px);
+        margin-top: 1rem;
+    }
+    
+    .bulk-actions.active {
+        display: flex;
+        animation: slideUp 0.3s ease;
+    }
+    
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .bulk-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    
+    .bulk-count {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+    
+    .bulk-count span {
+        color: var(--accent-primary);
+        font-family: 'JetBrains Mono', monospace;
+    }
+    
+    .bulk-buttons {
+        display: flex;
+        gap: 0.75rem;
+    }
+    
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: var(--bg-card);
+        border-radius: var(--radius-xl);
+        border: 1px solid var(--border-subtle);
+    }
+    
+    .empty-icon {
+        width: 100px;
+        height: 100px;
+        margin: 0 auto 1.5rem;
+        background: var(--bg-elevated);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.5rem;
+    }
+    
+    .empty-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+    
+    .empty-text {
+        color: var(--text-muted);
+        margin-bottom: 1.5rem;
     }
     
     /* Modal */
     .modal-overlay {
         display: none;
         position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0,0,0,0.5);
+        inset: 0;
+        background: rgba(0, 0, 0, 0.8);
+        backdrop-filter: blur(4px);
         z-index: 1000;
         align-items: center;
         justify-content: center;
+        padding: 1rem;
     }
     
     .modal-overlay.active {
         display: flex;
+        animation: fadeIn 0.2s ease;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
     }
     
     .modal {
-        background: white;
-        border-radius: 1rem;
+        background: var(--bg-card);
+        border: 1px solid var(--border-medium);
+        border-radius: var(--radius-xl);
         padding: 2rem;
-        max-width: 400px;
-        width: 90%;
+        max-width: 420px;
+        width: 100%;
         text-align: center;
+        animation: scaleIn 0.2s ease;
     }
     
-    .modal h3 {
+    @keyframes scaleIn {
+        from {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+    
+    .modal-icon {
+        width: 64px;
+        height: 64px;
+        margin: 0 auto 1.5rem;
+        background: rgba(239, 68, 68, 0.1);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+    }
+    
+    .modal-title {
         font-size: 1.25rem;
-        margin-bottom: 1rem;
-        color: #991b1b;
+        font-weight: 700;
+        margin-bottom: 0.75rem;
+        color: var(--text-primary);
     }
     
-    .modal p {
-        color: #6b7280;
-        margin-bottom: 1.5rem;
+    .modal-text {
+        color: var(--text-secondary);
+        margin-bottom: 2rem;
+        line-height: 1.6;
     }
     
     .modal-buttons {
@@ -212,135 +589,204 @@
         gap: 1rem;
         justify-content: center;
     }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .activity-card {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+        
+        .checkbox-wrapper {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            width: 32px;
+            height: 32px;
+        }
+        
+        .activity-content {
+            padding-left: 2.5rem;
+        }
+        
+        .activity-stats {
+            padding-left: 4.5rem;
+            gap: 1rem;
+        }
+        
+        .activity-stat {
+            text-align: left;
+        }
+        
+        .activity-actions {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            margin: 0;
+            padding: 0;
+            border: none;
+        }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>🗑️ Workout Admin</h1>
-    <p>Manage and delete workout data quickly</p>
-</div>
-
-<!-- Stats -->
-<div class="stats-grid">
-    <div class="stat-card">
-        <div class="stat-value">{{ stats.total_workouts }}</div>
-        <div class="stat-label">Total Workouts</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-value">{{ stats.total_imports }}</div>
-        <div class="stat-label">FIT Imports</div>
-    </div>
-</div>
-
-<!-- Danger Zone -->
-<div class="danger-zone">
-    <h3>⚠️ Danger Zone</h3>
-    <div class="danger-buttons">
-        <form method="post" action="/activity/admin/" style="display:inline;">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="delete_all">
-            <button type="button" class="btn btn-danger" onclick="confirmDeleteAll()">
-                🗑️ Delete ALL Workouts
-            </button>
-        </form>
-        <form method="post" action="/activity/admin/" style="display:inline;">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="delete_imports">
-            <button type="submit" class="btn btn-warning">
-                📁 Clear Import History Only
-            </button>
-        </form>
-    </div>
-</div>
-
-<!-- Workouts List -->
-<form method="post" action="/activity/admin/" id="workoutForm">
-    {% csrf_token %}
-    <input type="hidden" name="action" value="delete_selected">
+<div class="activities-page">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="stats-panel">
+            <h3 class="stats-panel-title">Overview</h3>
+            <div class="stat-item">
+                <div class="stat-icon">🏋️</div>
+                <div class="stat-content">
+                    <div class="stat-value">{{ stats.total_workouts }}</div>
+                    <div class="stat-label">Total Activities</div>
+                </div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-icon">📁</div>
+                <div class="stat-content">
+                    <div class="stat-value">{{ stats.total_imports }}</div>
+                    <div class="stat-label">FIT Imports</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="danger-panel">
+            <h3 class="danger-panel-title">
+                <span>⚠️</span>
+                Danger Zone
+            </h3>
+            <div class="danger-actions">
+                <button type="button" class="danger-btn primary" onclick="confirmDeleteAll()">
+                    🗑️ Delete All Activities
+                </button>
+                <form method="post" action="/activity/admin/" style="margin: 0;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="delete_imports">
+                    <button type="submit" class="danger-btn">
+                        📁 Clear Import History
+                    </button>
+                </form>
+            </div>
+        </div>
+    </aside>
     
-    <div class="workouts-section">
-        <div class="section-header">
-            <h2>Recent Workouts</h2>
-            <button type="button" class="btn btn-secondary" onclick="toggleAll()">
-                Select All
-            </button>
-        </div>
+    <!-- Main Content -->
+    <div class="main-panel">
+        <header class="page-header">
+            <h1 class="page-title">Activities</h1>
+            <p class="page-subtitle">Manage your workout data</p>
+        </header>
         
-        {% if workouts %}
-        <table class="workouts-table">
-            <thead>
-                <tr>
-                    <th style="width:40px;">
-                        <input type="checkbox" id="selectAll" onchange="toggleAll()">
-                    </th>
-                    <th>Workout</th>
-                    <th>Sport</th>
-                    <th>Date</th>
-                    <th>Duration</th>
-                    <th>Distance</th>
-                    <th style="width:60px;">View</th>
-                </tr>
-            </thead>
-            <tbody>
+        <form method="post" action="/activity/admin/" id="workoutForm">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="delete_selected">
+            
+            <div class="activities-header">
+                <div class="activities-title">
+                    <span>📊</span>
+                    Recent Activities
+                    <span class="activities-count">{{ workouts|length }}</span>
+                </div>
+                <div class="selection-info">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="selectAll" onchange="toggleAll()" style="width: 16px; height: 16px;">
+                        <span class="text-muted" style="font-size: 0.875rem;">Select all</span>
+                    </label>
+                </div>
+            </div>
+            
+            {% if workouts %}
+            <div class="activities-list">
                 {% for workout in workouts %}
-                <tr>
-                    <td>
-                        <input type="checkbox" name="workout_ids" value="{{ workout.id }}" class="workout-checkbox">
-                    </td>
-                    <td>
-                        <a href="/activity/workout/{{ workout.id }}/" style="text-decoration: none;">
-                            <div class="workout-title">{{ workout.title|default:"Untitled Workout" }}</div>
-                        </a>
-                        <div class="workout-meta">ID: {{ workout.id }}</div>
-                    </td>
-                    <td>
-                        <span class="sport-badge {{ workout.sport }}">
-                            {% if workout.sport == 'running' %}🏃{% elif workout.sport == 'cycling' %}🚴{% elif workout.sport == 'swimming' %}🏊{% else %}🏋️{% endif %}
-                            {{ workout.get_sport_display }}
-                        </span>
-                    </td>
-                    <td>{{ workout.started_at|date:"M d, Y" }}<br><span class="workout-meta">{{ workout.started_at|time:"H:i" }}</span></td>
-                    <td>{{ workout.duration_formatted|default:"-" }}</td>
-                    <td>
-                        {% if workout.total_distance %}
-                            {{ workout.total_distance|floatformat:0 }}m
-                        {% else %}
-                            -
+                <div class="activity-card" id="card-{{ workout.id }}">
+                    <input type="checkbox" name="workout_ids" value="{{ workout.id }}" class="activity-checkbox" id="checkbox-{{ workout.id }}" onchange="updateSelection()">
+                    <label class="checkbox-wrapper" for="checkbox-{{ workout.id }}">
+                        <div class="checkbox-custom">✓</div>
+                    </label>
+                    
+                    <a href="/activity/workout/{{ workout.id }}/" class="activity-content">
+                        <div class="activity-icon {{ workout.sport }}">
+                            {% if workout.sport == 'running' %}🏃
+                            {% elif workout.sport == 'cycling' %}🚴
+                            {% elif workout.sport == 'swimming' %}🏊
+                            {% elif workout.sport == 'strength' %}💪
+                            {% elif workout.sport == 'walking' %}🚶
+                            {% elif workout.sport == 'hiking' %}🥾
+                            {% else %}🏋️{% endif %}
+                        </div>
+                        <div class="activity-info">
+                            <div class="activity-name">{{ workout.title|default:"Untitled Activity" }}</div>
+                            <div class="activity-meta">
+                                <span class="activity-date">{{ workout.started_at|date:"M d, Y" }} · {{ workout.started_at|time:"g:i A" }}</span>
+                                <span class="activity-id">#{{ workout.id }}</span>
+                            </div>
+                        </div>
+                    </a>
+                    
+                    <div class="activity-stats">
+                        {% if workout.duration_formatted %}
+                        <div class="activity-stat">
+                            <div class="stat-number">{{ workout.duration_formatted }}</div>
+                            <div class="stat-unit">Duration</div>
+                        </div>
                         {% endif %}
-                    </td>
-                    <td>
-                        <a href="/activity/workout/{{ workout.id }}/" class="btn btn-secondary" style="padding: 0.375rem 0.75rem;">
-                            👁️
-                        </a>
-                    </td>
-                </tr>
+                        
+                        {% if workout.total_distance %}
+                        <div class="activity-stat">
+                            <div class="stat-number">{{ workout.total_distance|floatformat:0 }}</div>
+                            <div class="stat-unit">Meters</div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if workout.total_calories %}
+                        <div class="activity-stat">
+                            <div class="stat-number">{{ workout.total_calories }}</div>
+                            <div class="stat-unit">Cal</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="activity-actions">
+                        <a href="/activity/workout/{{ workout.id }}/" class="action-btn" title="View details">👁️</a>
+                    </div>
+                </div>
                 {% endfor %}
-            </tbody>
-        </table>
-        
-        <div class="action-bar">
-            <span class="select-info"><span id="selectedCount">0</span> selected</span>
-            <button type="submit" class="btn btn-danger" id="deleteSelectedBtn" disabled>
-                🗑️ Delete Selected
-            </button>
-        </div>
-        {% else %}
-        <div class="empty-state">
-            <p>🎉 No workouts found. Your data is clean!</p>
-        </div>
-        {% endif %}
+            </div>
+            
+            <div class="bulk-actions" id="bulkActions">
+                <div class="bulk-info">
+                    <span class="bulk-count"><span id="selectedCount">0</span> selected</span>
+                </div>
+                <div class="bulk-buttons">
+                    <button type="button" class="btn btn-secondary" onclick="clearSelection()">Clear</button>
+                    <button type="submit" class="btn btn-danger">🗑️ Delete Selected</button>
+                </div>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">🎉</div>
+                <h3 class="empty-title">No activities yet</h3>
+                <p class="empty-text">Upload your first FIT file to start tracking</p>
+                <a href="/activity/upload/" class="btn btn-primary">📤 Upload Activity</a>
+            </div>
+            {% endif %}
+        </form>
     </div>
-</form>
+</div>
 
-<!-- Confirmation Modal -->
+<!-- Delete All Modal -->
 <div class="modal-overlay" id="deleteAllModal">
     <div class="modal">
-        <h3>⚠️ Delete All Workouts?</h3>
-        <p>This will permanently delete ALL your workouts, activities, sets, laps, and time-series data. This cannot be undone!</p>
+        <div class="modal-icon">⚠️</div>
+        <h3 class="modal-title">Delete All Activities?</h3>
+        <p class="modal-text">
+            This will permanently delete <strong>all your activities</strong>, including workout logs, laps, sets, and time-series data. This action cannot be undone.
+        </p>
         <div class="modal-buttons">
             <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-            <button class="btn btn-danger" onclick="submitDeleteAll()">Yes, Delete Everything</button>
+            <button class="btn btn-danger" onclick="submitDeleteAll()">Yes, Delete All</button>
         </div>
     </div>
 </div>
@@ -348,28 +794,52 @@
 
 {% block extra_js %}
 <script>
-    // Track selected checkboxes
-    function updateSelectedCount() {
-        const checkboxes = document.querySelectorAll('.workout-checkbox:checked');
-        const count = checkboxes.length;
-        document.getElementById('selectedCount').textContent = count;
-        document.getElementById('deleteSelectedBtn').disabled = count === 0;
+    function updateSelection() {
+        const checkboxes = document.querySelectorAll('.activity-checkbox');
+        const checked = document.querySelectorAll('.activity-checkbox:checked');
+        const bulkActions = document.getElementById('bulkActions');
+        const selectedCount = document.getElementById('selectedCount');
+        
+        // Update count
+        selectedCount.textContent = checked.length;
+        
+        // Show/hide bulk actions
+        if (checked.length > 0) {
+            bulkActions.classList.add('active');
+        } else {
+            bulkActions.classList.remove('active');
+        }
+        
+        // Update card styles
+        checkboxes.forEach(cb => {
+            const card = document.getElementById('card-' + cb.value);
+            if (cb.checked) {
+                card.classList.add('selected');
+            } else {
+                card.classList.remove('selected');
+            }
+        });
+        
+        // Update select all checkbox
+        const selectAll = document.getElementById('selectAll');
+        selectAll.checked = checked.length === checkboxes.length && checkboxes.length > 0;
+        selectAll.indeterminate = checked.length > 0 && checked.length < checkboxes.length;
     }
     
-    // Toggle all checkboxes
     function toggleAll() {
         const selectAll = document.getElementById('selectAll');
-        const checkboxes = document.querySelectorAll('.workout-checkbox');
+        const checkboxes = document.querySelectorAll('.activity-checkbox');
         checkboxes.forEach(cb => cb.checked = selectAll.checked);
-        updateSelectedCount();
+        updateSelection();
     }
     
-    // Add event listeners to all checkboxes
-    document.querySelectorAll('.workout-checkbox').forEach(cb => {
-        cb.addEventListener('change', updateSelectedCount);
-    });
+    function clearSelection() {
+        const checkboxes = document.querySelectorAll('.activity-checkbox');
+        checkboxes.forEach(cb => cb.checked = false);
+        document.getElementById('selectAll').checked = false;
+        updateSelection();
+    }
     
-    // Delete All Modal
     function confirmDeleteAll() {
         document.getElementById('deleteAllModal').classList.add('active');
     }
@@ -385,7 +855,7 @@
         
         const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
         form.innerHTML = '<input type="hidden" name="csrfmiddlewaretoken" value="' + csrf + '">' +
-                       '<input type="hidden" name="action" value="delete_all">';
+                        '<input type="hidden" name="action" value="delete_all">';
         
         document.body.appendChild(form);
         form.submit();
@@ -394,6 +864,11 @@
     // Close modal on outside click
     document.getElementById('deleteAllModal').addEventListener('click', function(e) {
         if (e.target === this) closeModal();
+    });
+    
+    // Escape key to close modal
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeModal();
     });
 </script>
 {% endblock %}

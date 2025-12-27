@@ -1,10 +1,3 @@
-"""
-GoFit Activity App - Template Views
-=====================================
-
-Django template views for the activity app.
-"""
-
 import os
 import tempfile
 
