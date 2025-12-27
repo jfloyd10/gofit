@@ -1,0 +1,1007 @@
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page_title }} - GoFit</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f5f5f7;
+            color: #1a1a2e;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        
+        .navbar {
+            background: white;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .navbar-brand {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #6366f1;
+            text-decoration: none;
+        }
+        
+        .navbar-nav {
+            display: flex;
+            gap: 1.5rem;
+            list-style: none;
+        }
+        
+        .navbar-nav a {
+            color: #4b5563;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .navbar-nav a:hover {
+            color: #6366f1;
+        }
+        
+        .main-content {
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        /* Back link */
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #6b7280;
+            text-decoration: none;
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+        }
+        
+        .back-link:hover {
+            color: #6366f1;
+        }
+        
+        /* Workout Header */
+        .workout-header {
+            background: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .workout-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1.5rem;
+        }
+        
+        .workout-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 0.5rem;
+        }
+        
+        .workout-meta {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+        
+        .workout-meta span {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        
+        .sport-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        
+        .sport-badge.running { background: #dbeafe; color: #1e40af; }
+        .sport-badge.cycling { background: #fef3c7; color: #92400e; }
+        .sport-badge.swimming { background: #cffafe; color: #0e7490; }
+        .sport-badge.strength { background: #fce7f3; color: #9d174d; }
+        .sport-badge.walking { background: #d1fae5; color: #065f46; }
+        .sport-badge.hiking { background: #d1fae5; color: #065f46; }
+        .sport-badge.other { background: #f3f4f6; color: #4b5563; }
+        
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1rem;
+        }
+        
+        .stat-card {
+            text-align: center;
+            padding: 1rem;
+            background: #f9fafb;
+            border-radius: 0.75rem;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1a1a2e;
+        }
+        
+        .stat-label {
+            font-size: 0.75rem;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        /* Sections */
+        .section {
+            background: white;
+            border-radius: 1rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid #e5e7eb;
+            overflow: hidden;
+        }
+        
+        .section-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f9fafb;
+        }
+        
+        .section-header h2 {
+            font-size: 1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .section-content {
+            padding: 1.5rem;
+        }
+        
+        .section-badge {
+            background: #e5e7eb;
+            color: #4b5563;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        
+        /* Activity Logs */
+        .activity-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 0.75rem;
+            margin-bottom: 1rem;
+            overflow: hidden;
+        }
+        
+        .activity-card:last-child {
+            margin-bottom: 0;
+        }
+        
+        .activity-header {
+            padding: 1rem;
+            background: #f9fafb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+        
+        .activity-header:hover {
+            background: #f3f4f6;
+        }
+        
+        .activity-name {
+            font-weight: 600;
+            color: #1a1a2e;
+        }
+        
+        .activity-summary {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+        
+        .activity-body {
+            padding: 1rem;
+            display: none;
+        }
+        
+        .activity-body.expanded {
+            display: block;
+        }
+        
+        /* Sets Table */
+        .sets-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+        
+        .sets-table th,
+        .sets-table td {
+            padding: 0.625rem 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        
+        .sets-table th {
+            font-weight: 600;
+            color: #6b7280;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+        }
+        
+        .sets-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .set-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            background: #6366f1;
+            color: white;
+            border-radius: 50%;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .set-completed {
+            color: #059669;
+        }
+        
+        .set-incomplete {
+            color: #9ca3af;
+        }
+        
+        /* Laps Table */
+        .laps-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+        
+        .laps-table th,
+        .laps-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        
+        .laps-table th {
+            font-weight: 600;
+            color: #6b7280;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            background: #f9fafb;
+        }
+        
+        .lap-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            background: #10b981;
+            color: white;
+            border-radius: 50%;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .intensity-badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        
+        .intensity-badge.active { background: #fee2e2; color: #991b1b; }
+        .intensity-badge.rest { background: #d1fae5; color: #065f46; }
+        .intensity-badge.warmup { background: #fef3c7; color: #92400e; }
+        .intensity-badge.cooldown { background: #dbeafe; color: #1e40af; }
+        
+        /* Charts */
+        .chart-container {
+            position: relative;
+            height: 250px;
+            margin-bottom: 1rem;
+        }
+        
+        .chart-container:last-child {
+            margin-bottom: 0;
+        }
+        
+        .chart-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .chart-tab {
+            padding: 0.5rem 1rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            background: white;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #6b7280;
+            transition: all 0.2s;
+        }
+        
+        .chart-tab:hover {
+            border-color: #6366f1;
+            color: #6366f1;
+        }
+        
+        .chart-tab.active {
+            background: #6366f1;
+            border-color: #6366f1;
+            color: white;
+        }
+        
+        /* Device Info */
+        .device-card {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: #f9fafb;
+            border-radius: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        .device-card:last-child {
+            margin-bottom: 0;
+        }
+        
+        .device-icon {
+            width: 48px;
+            height: 48px;
+            background: white;
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .device-info h4 {
+            font-weight: 600;
+            color: #1a1a2e;
+        }
+        
+        .device-info p {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+        
+        /* Import Info */
+        .import-info {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .import-icon {
+            font-size: 1.5rem;
+        }
+        
+        .import-details h4 {
+            font-weight: 600;
+            color: #166534;
+        }
+        
+        .import-details p {
+            font-size: 0.875rem;
+            color: #15803d;
+        }
+        
+        /* Notes */
+        .notes-content {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            color: #92400e;
+            white-space: pre-wrap;
+        }
+        
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: #9ca3af;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .main-content {
+                padding: 1rem;
+            }
+            
+            .workout-header {
+                padding: 1.5rem;
+            }
+            
+            .workout-header-top {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .laps-table {
+                display: block;
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/" class="navbar-brand">💪 GoFit</a>
+        <ul class="navbar-nav">
+            <li><a href="/activity/upload/">Upload</a></li>
+            <li><a href="/activity/admin/">Workout Admin</a></li>
+            <li><a href="/admin/">Django Admin</a></li>
+        </ul>
+    </nav>
+    
+    <main class="main-content">
+        <a href="/activity/admin/" class="back-link">← Back to Workout Admin</a>
+        
+        <!-- Workout Header -->
+        <div class="workout-header">
+            <div class="workout-header-top">
+                <div>
+                    <h1 class="workout-title">{{ workout.title|default:"Untitled Workout" }}</h1>
+                    <div class="workout-meta">
+                        <span>📅 {{ workout.started_at|date:"l, F j, Y" }}</span>
+                        <span>🕐 {{ workout.started_at|time:"g:i A" }}</span>
+                        {% if workout.session %}
+                        <span>📋 {{ workout.session.title }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <span class="sport-badge {{ workout.sport }}">
+                    {% if workout.sport == 'running' %}🏃{% elif workout.sport == 'cycling' %}🚴{% elif workout.sport == 'swimming' %}🏊{% elif workout.sport == 'strength' %}💪{% elif workout.sport == 'walking' %}🚶{% elif workout.sport == 'hiking' %}🥾{% else %}🏋️{% endif %}
+                    {{ workout.get_sport_display }}
+                </span>
+            </div>
+            
+            <div class="stats-grid">
+                {% if workout.total_timer_time %}
+                <div class="stat-card">
+                    <div class="stat-value">{{ workout.duration_formatted }}</div>
+                    <div class="stat-label">Duration</div>
+                </div>
+                {% endif %}
+                
+                {% if workout.total_distance %}
+                <div class="stat-card">
+                    <div class="stat-value">{{ workout.total_distance|floatformat:0 }}m</div>
+                    <div class="stat-label">Distance</div>
+                </div>
+                {% endif %}
+                
+                {% if workout.total_calories %}
+                <div class="stat-card">
+                    <div class="stat-value">{{ workout.total_calories }}</div>
+                    <div class="stat-label">Calories</div>
+                </div>
+                {% endif %}
+                
+                {% if workout.avg_heart_rate %}
+                <div class="stat-card">
+                    <div class="stat-value">{{ workout.avg_heart_rate }}</div>
+                    <div class="stat-label">Avg HR</div>
+                </div>
+                {% endif %}
+                
+                {% if workout.max_heart_rate %}
+                <div class="stat-card">
+                    <div class="stat-value">{{ workout.max_heart_rate }}</div>
+                    <div class="stat-label">Max HR</div>
+                </div>
+                {% endif %}
+                
+                {% if workout.avg_speed %}
+                <div class="stat-card">
+                    <div class="stat-value">{{ workout.avg_speed|floatformat:1 }}</div>
+                    <div class="stat-label">Avg Speed (m/s)</div>
+                </div>
+                {% endif %}
+                
+                {% if workout.avg_power %}
+                <div class="stat-card">
+                    <div class="stat-value">{{ workout.avg_power }}W</div>
+                    <div class="stat-label">Avg Power</div>
+                </div>
+                {% endif %}
+                
+                {% if workout.avg_cadence %}
+                <div class="stat-card">
+                    <div class="stat-value">{{ workout.avg_cadence }}</div>
+                    <div class="stat-label">Avg Cadence</div>
+                </div>
+                {% endif %}
+                
+                {% if workout.total_ascent %}
+                <div class="stat-card">
+                    <div class="stat-value">{{ workout.total_ascent|floatformat:0 }}m</div>
+                    <div class="stat-label">Elevation Gain</div>
+                </div>
+                {% endif %}
+                
+                {% if workout.total_volume %}
+                <div class="stat-card">
+                    <div class="stat-value">{{ workout.total_volume|floatformat:0 }}kg</div>
+                    <div class="stat-label">Total Volume</div>
+                </div>
+                {% endif %}
+                
+                {% if workout.total_sets_completed %}
+                <div class="stat-card">
+                    <div class="stat-value">{{ workout.total_sets_completed }}</div>
+                    <div class="stat-label">Total Sets</div>
+                </div>
+                {% endif %}
+                
+                {% if workout.total_reps_completed %}
+                <div class="stat-card">
+                    <div class="stat-value">{{ workout.total_reps_completed }}</div>
+                    <div class="stat-label">Total Reps</div>
+                </div>
+                {% endif %}
+                
+                {% if workout.perceived_exertion %}
+                <div class="stat-card">
+                    <div class="stat-value">{{ workout.perceived_exertion }}/10</div>
+                    <div class="stat-label">RPE</div>
+                </div>
+                {% endif %}
+                
+                {% if workout.training_stress_score %}
+                <div class="stat-card">
+                    <div class="stat-value">{{ workout.training_stress_score|floatformat:0 }}</div>
+                    <div class="stat-label">TSS</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Time Series Charts (if data exists) -->
+        {% if records_sample %}
+        <div class="section">
+            <div class="section-header">
+                <h2>📈 Performance Data</h2>
+                <span class="section-badge">{{ stats.total_records|intcomma }} data points</span>
+            </div>
+            <div class="section-content">
+                <div class="chart-tabs">
+                    <button class="chart-tab active" data-chart="heartRate">❤️ Heart Rate</button>
+                    <button class="chart-tab" data-chart="speed">⚡ Speed</button>
+                    <button class="chart-tab" data-chart="altitude">⛰️ Altitude</button>
+                    <button class="chart-tab" data-chart="power">💪 Power</button>
+                    <button class="chart-tab" data-chart="cadence">🔄 Cadence</button>
+                </div>
+                <div class="chart-container">
+                    <canvas id="performanceChart"></canvas>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Activity Logs (Exercises) -->
+        {% if activity_logs %}
+        <div class="section">
+            <div class="section-header">
+                <h2>🏋️ Activities & Exercises</h2>
+                <span class="section-badge">{{ stats.total_activities }} activities • {{ stats.total_sets }} sets</span>
+            </div>
+            <div class="section-content">
+                {% for activity in activity_logs %}
+                <div class="activity-card">
+                    <div class="activity-header" onclick="toggleActivity({{ activity.id }})">
+                        <div>
+                            <div class="activity-name">
+                                {% if activity.exercise %}
+                                    {{ activity.exercise.name }}
+                                {% else %}
+                                    {{ activity.manual_name|default:"Unknown Exercise" }}
+                                {% endif %}
+                            </div>
+                            <div class="activity-summary">
+                                {% if activity.total_sets %}{{ activity.total_sets }} sets{% endif %}
+                                {% if activity.total_reps %} • {{ activity.total_reps }} reps{% endif %}
+                                {% if activity.total_volume %} • {{ activity.total_volume|floatformat:1 }}kg volume{% endif %}
+                                {% if activity.max_weight %} • Max: {{ activity.max_weight|floatformat:1 }}kg{% endif %}
+                            </div>
+                        </div>
+                        <span style="color: #9ca3af;">▼</span>
+                    </div>
+                    <div class="activity-body" id="activity-{{ activity.id }}">
+                        {% if activity.set_logs.all %}
+                        <table class="sets-table">
+                            <thead>
+                                <tr>
+                                    <th>Set</th>
+                                    <th>Weight</th>
+                                    <th>Reps</th>
+                                    <th>RPE</th>
+                                    <th>Volume</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for set in activity.set_logs.all %}
+                                <tr>
+                                    <td><span class="set-number">{{ set.set_number }}</span></td>
+                                    <td>
+                                        {% if set.weight %}
+                                            {{ set.weight|floatformat:1 }}kg
+                                            {% if set.is_per_side %}(per side){% endif %}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if set.reps %}
+                                            {{ set.reps }}{% if set.is_to_failure %} (failure){% endif %}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>{% if set.rpe %}{{ set.rpe }}{% else %}-{% endif %}</td>
+                                    <td>
+                                        {% if set.weight and set.reps %}
+                                            {{ set.volume|floatformat:0 }}kg
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if set.is_completed %}
+                                            <span class="set-completed">✓</span>
+                                        {% else %}
+                                            <span class="set-incomplete">○</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        {% else %}
+                        <div class="empty-state">No sets recorded</div>
+                        {% endif %}
+                        
+                        {% if activity.notes %}
+                        <div style="margin-top: 1rem;">
+                            <strong>Notes:</strong>
+                            <p style="color: #6b7280; margin-top: 0.25rem;">{{ activity.notes }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Laps -->
+        {% if laps %}
+        <div class="section">
+            <div class="section-header">
+                <h2>🔁 Laps / Intervals</h2>
+                <span class="section-badge">{{ stats.total_laps }} laps</span>
+            </div>
+            <div class="section-content" style="padding: 0; overflow-x: auto;">
+                <table class="laps-table">
+                    <thead>
+                        <tr>
+                            <th>Lap</th>
+                            <th>Time</th>
+                            <th>Distance</th>
+                            <th>Avg HR</th>
+                            <th>Max HR</th>
+                            <th>Avg Speed</th>
+                            <th>Avg Power</th>
+                            <th>Cadence</th>
+                            <th>Intensity</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for lap in laps %}
+                        <tr>
+                            <td><span class="lap-number">{{ lap.lap_number }}</span></td>
+                            <td>
+                                {% if lap.total_elapsed_time %}
+                                    {% widthratio lap.total_elapsed_time 60 1 as minutes %}
+                                    {{ lap.total_elapsed_time|floatformat:0 }}s
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>{% if lap.total_distance %}{{ lap.total_distance|floatformat:0 }}m{% else %}-{% endif %}</td>
+                            <td>{% if lap.avg_heart_rate %}{{ lap.avg_heart_rate }}{% else %}-{% endif %}</td>
+                            <td>{% if lap.max_heart_rate %}{{ lap.max_heart_rate }}{% else %}-{% endif %}</td>
+                            <td>{% if lap.avg_speed %}{{ lap.avg_speed|floatformat:2 }} m/s{% else %}-{% endif %}</td>
+                            <td>{% if lap.avg_power %}{{ lap.avg_power }}W{% else %}-{% endif %}</td>
+                            <td>{% if lap.avg_cadence %}{{ lap.avg_cadence }}{% else %}-{% endif %}</td>
+                            <td>
+                                {% if lap.intensity %}
+                                <span class="intensity-badge {{ lap.intensity }}">{{ lap.intensity }}</span>
+                                {% else %}-{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Notes -->
+        {% if workout.notes %}
+        <div class="section">
+            <div class="section-header">
+                <h2>📝 Notes</h2>
+            </div>
+            <div class="section-content">
+                <div class="notes-content">{{ workout.notes }}</div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Devices -->
+        {% if devices %}
+        <div class="section">
+            <div class="section-header">
+                <h2>📱 Devices</h2>
+            </div>
+            <div class="section-content">
+                {% for device in devices %}
+                <div class="device-card">
+                    <div class="device-icon">
+                        {% if device.device_type == 'watch' %}⌚
+                        {% elif device.device_type == 'bike_computer' %}🚴
+                        {% elif device.device_type == 'heart_rate_monitor' %}❤️
+                        {% elif device.device_type == 'power_meter' %}⚡
+                        {% else %}📱{% endif %}
+                    </div>
+                    <div class="device-info">
+                        <h4>{{ device.manufacturer|default:"Unknown" }} {{ device.product_name|default:"Device" }}</h4>
+                        <p>
+                            {% if device.serial_number %}S/N: {{ device.serial_number }}{% endif %}
+                            {% if device.software_version %} • SW: {{ device.software_version }}{% endif %}
+                            {% if device.battery_level %} • Battery: {{ device.battery_level }}%{% endif %}
+                        </p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- FIT Import Info -->
+        {% if fit_import %}
+        <div class="section">
+            <div class="section-header">
+                <h2>📥 Import Information</h2>
+            </div>
+            <div class="section-content">
+                <div class="import-info">
+                    <span class="import-icon">✅</span>
+                    <div class="import-details">
+                        <h4>{{ fit_import.original_filename }}</h4>
+                        <p>
+                            Imported {{ fit_import.uploaded_at|date:"M d, Y H:i" }}
+                            {% if fit_import.file_size %} • {{ fit_import.file_size|filesizeformat }}{% endif %}
+                            {% if fit_import.fit_manufacturer %} • {{ fit_import.fit_manufacturer }}{% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Additional Details -->
+        <div class="section">
+            <div class="section-header">
+                <h2>ℹ️ Additional Details</h2>
+            </div>
+            <div class="section-content">
+                <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                    <div class="stat-card">
+                        <div class="stat-value">{{ workout.source|default:"manual" }}</div>
+                        <div class="stat-label">Source</div>
+                    </div>
+                    {% if workout.external_id %}
+                    <div class="stat-card">
+                        <div class="stat-value" style="font-size: 0.875rem;">{{ workout.external_id|truncatechars:20 }}</div>
+                        <div class="stat-label">External ID</div>
+                    </div>
+                    {% endif %}
+                    <div class="stat-card">
+                        <div class="stat-value">{{ workout.id }}</div>
+                        <div class="stat-label">Workout ID</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">{{ workout.created_at|date:"M d, Y" }}</div>
+                        <div class="stat-label">Created</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <script>
+        // Toggle activity expansion
+        function toggleActivity(id) {
+            const body = document.getElementById('activity-' + id);
+            body.classList.toggle('expanded');
+        }
+        
+        // Expand all activities by default
+        document.querySelectorAll('.activity-body').forEach(el => {
+            el.classList.add('expanded');
+        });
+        
+        {% if records_sample %}
+        // Chart data
+        const recordsData = {{ records_sample|safe }};
+        
+        // Prepare datasets
+        const labels = recordsData.map(r => {
+            const mins = Math.floor(r.elapsed_seconds / 60);
+            const secs = Math.floor(r.elapsed_seconds % 60);
+            return mins + ':' + secs.toString().padStart(2, '0');
+        });
+        
+        const datasets = {
+            heartRate: {
+                label: 'Heart Rate (bpm)',
+                data: recordsData.map(r => r.heart_rate),
+                borderColor: '#ef4444',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            },
+            speed: {
+                label: 'Speed (m/s)',
+                data: recordsData.map(r => r.speed),
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            },
+            altitude: {
+                label: 'Altitude (m)',
+                data: recordsData.map(r => r.altitude),
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+            },
+            power: {
+                label: 'Power (W)',
+                data: recordsData.map(r => r.power),
+                borderColor: '#f59e0b',
+                backgroundColor: 'rgba(245, 158, 11, 0.1)',
+            },
+            cadence: {
+                label: 'Cadence (rpm)',
+                data: recordsData.map(r => r.cadence),
+                borderColor: '#8b5cf6',
+                backgroundColor: 'rgba(139, 92, 246, 0.1)',
+            }
+        };
+        
+        // Initialize chart
+        const ctx = document.getElementById('performanceChart').getContext('2d');
+        let currentChart = 'heartRate';
+        
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    ...datasets[currentChart],
+                    fill: true,
+                    tension: 0.2,
+                    pointRadius: 0,
+                    borderWidth: 2,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        display: true,
+                        title: {
+                            display: true,
+                            text: 'Time'
+                        },
+                        ticks: {
+                            maxTicksLimit: 10
+                        }
+                    },
+                    y: {
+                        display: true,
+                        beginAtZero: false
+                    }
+                },
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                }
+            }
+        });
+        
+        // Chart tab switching
+        document.querySelectorAll('.chart-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                // Update active tab
+                document.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Update chart
+                const chartType = this.dataset.chart;
+                chart.data.datasets[0] = {
+                    ...datasets[chartType],
+                    fill: true,
+                    tension: 0.2,
+                    pointRadius: 0,
+                    borderWidth: 2,
+                };
+                chart.update();
+            });
+        });
+        {% endif %}
+    </script>
+</body>
+</html>

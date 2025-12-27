@@ -473,7 +473,7 @@ class FitFileImportView(views.APIView):
     """
     Handle FIT file uploads and imports.
     """
-    permission_classes = [permissions.IsAuthenticated]
+    #permission_classes = [permissions.IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
     
     def get(self, request):

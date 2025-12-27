@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page_title }} - GoFit</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f7;
+            color: #1a1a2e;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        
+        /* Navigation */
+        .navbar {
+            background: white;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .navbar-brand {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #6366f1;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .navbar-nav {
+            display: flex;
+            gap: 1.5rem;
+            list-style: none;
+        }
+        
+        .navbar-nav a {
+            color: #4b5563;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 0.5rem 0;
+            transition: color 0.2s;
+        }
+        
+        .navbar-nav a:hover {
+            color: #6366f1;
+        }
+        
+        .navbar-nav a.active {
+            color: #6366f1;
+            border-bottom: 2px solid #6366f1;
+        }
+        
+        /* Main Content */
+        .main-content {
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .upload-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .upload-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .upload-header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 0.5rem;
+        }
+        
+        .upload-header p {
+            color: #6b7280;
+            font-size: 1rem;
+        }
+        
+        /* Drop Zone Styles */
+        .drop-zone {
+            border: 2px dashed #d1d5db;
+            border-radius: 1rem;
+            padding: 3rem 2rem;
+            text-align: center;
+            background: #fafafa;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .drop-zone:hover {
+            border-color: #6366f1;
+            background: #f5f3ff;
+        }
+        
+        .drop-zone.drag-over {
+            border-color: #6366f1;
+            background: #eef2ff;
+            transform: scale(1.02);
+        }
+        
+        .drop-zone.uploading {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+        
+        .drop-zone-icon {
+            font-size: 3rem;
+            color: #9ca3af;
+            margin-bottom: 1rem;
+        }
+        
+        .drop-zone.drag-over .drop-zone-icon {
+            color: #6366f1;
+        }
+        
+        .drop-zone-text {
+            font-size: 1.1rem;
+            color: #374151;
+            margin-bottom: 0.5rem;
+        }
+        
+        .drop-zone-subtext {
+            font-size: 0.875rem;
+            color: #9ca3af;
+        }
+        
+        .drop-zone-subtext a {
+            color: #6366f1;
+            font-weight: 500;
+            text-decoration: none;
+        }
+        
+        .drop-zone-subtext a:hover {
+            text-decoration: underline;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        /* Upload Button */
+        .upload-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: #6366f1;
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 1rem;
+        }
+        
+        .upload-btn:hover {
+            background: #4f46e5;
+        }
+        
+        .upload-btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        
+        /* Progress Bar */
+        .upload-progress {
+            display: none;
+            margin-top: 1.5rem;
+        }
+        
+        .upload-progress.active {
+            display: block;
+        }
+        
+        .progress-bar-container {
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #6366f1, #8b5cf6);
+            width: 0%;
+            transition: width 0.3s ease;
+            animation: progress-pulse 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes progress-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .progress-text {
+            text-align: center;
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+        
+        /* Messages */
+        .messages {
+            margin-bottom: 1.5rem;
+        }
+        
+        .alert {
+            padding: 1rem 1.25rem;
+            border-radius: 0.5rem;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+        
+        .alert-success {
+            background: #ecfdf5;
+            border: 1px solid #a7f3d0;
+            color: #065f46;
+        }
+        
+        .alert-error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+        }
+        
+        .alert-warning {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            color: #92400e;
+        }
+        
+        .alert-icon {
+            flex-shrink: 0;
+            font-size: 1.25rem;
+        }
+        
+        /* Recent Imports */
+        .recent-imports {
+            margin-top: 3rem;
+        }
+        
+        .recent-imports h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1a1a2e;
+            margin-bottom: 1rem;
+        }
+        
+        .imports-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        
+        .import-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.75rem;
+            transition: box-shadow 0.2s;
+        }
+        
+        .import-item:hover {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+        
+        .import-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+        
+        .import-icon.running { background: #dbeafe; color: #2563eb; }
+        .import-icon.cycling { background: #fef3c7; color: #d97706; }
+        .import-icon.swimming { background: #cffafe; color: #0891b2; }
+        .import-icon.strength { background: #fce7f3; color: #db2777; }
+        .import-icon.other { background: #f3f4f6; color: #6b7280; }
+        
+        .import-details {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .import-title {
+            font-weight: 500;
+            color: #1a1a2e;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .import-meta {
+            font-size: 0.875rem;
+            color: #6b7280;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .import-status {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        
+        .import-status.completed { background: #dcfce7; color: #166534; }
+        .import-status.failed { background: #fee2e2; color: #991b1b; }
+        .import-status.duplicate { background: #fef3c7; color: #92400e; }
+        .import-status.processing { background: #dbeafe; color: #1e40af; }
+        
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: #9ca3af;
+        }
+        
+        .empty-state-icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        /* Supported devices */
+        .supported-devices {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background: #f9fafb;
+            border-radius: 0.75rem;
+        }
+        
+        .supported-devices h3 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 0.75rem;
+        }
+        
+        .device-logos {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .device-logo {
+            font-size: 0.875rem;
+            color: #6b7280;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: #9ca3af;
+            font-size: 0.875rem;
+        }
+        
+        /* Responsive */
+        @media (max-width: 640px) {
+            .upload-container {
+                padding: 1rem;
+            }
+            
+            .drop-zone {
+                padding: 2rem 1rem;
+            }
+            
+            .import-meta {
+                flex-direction: column;
+                gap: 0.25rem;
+            }
+            
+            .navbar {
+                padding: 1rem;
+            }
+            
+            .navbar-nav {
+                gap: 1rem;
+            }
+            
+            .main-content {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <a href="/" class="navbar-brand">
+            💪 GoFit
+        </a>
+        <ul class="navbar-nav">
+            <li><a href="/activity/upload/" class="active">Upload</a></li>
+            <li><a href="/api/v1/activity/workouts/">Workouts API</a></li>
+            {% if user.is_authenticated %}
+            <li><a href="/admin/">Admin</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+    
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="upload-container">
+            <div class="upload-header">
+                <h1>📤 Upload FIT File</h1>
+                <p>Import your workout data from Garmin, Wahoo, and other fitness devices</p>
+            </div>
+            
+            <!-- Messages -->
+            {% if messages %}
+            <div class="messages">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">
+                    <span class="alert-icon">
+                        {% if message.tags == 'success' %}✅{% elif message.tags == 'error' %}❌{% else %}⚠️{% endif %}
+                    </span>
+                    <span>{{ message }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            <!-- Upload Form -->
+            <form method="post" enctype="multipart/form-data" id="uploadForm" action="/activity/upload/">
+                {% csrf_token %}
+                
+                <div class="drop-zone" id="dropZone">
+                    <div class="drop-zone-icon">📁</div>
+                    <div class="drop-zone-text">Drag and drop your FIT file here</div>
+                    <div class="drop-zone-subtext">
+                        or <a href="#" id="browseLink">browse</a> to choose a file
+                    </div>
+                    <input type="file" name="fit_file" id="fitFile" class="file-input" accept=".fit">
+                    <button type="submit" class="upload-btn" id="uploadBtn" disabled>
+                        <span>⬆️</span>
+                        <span id="uploadBtnText">Select a file first</span>
+                    </button>
+                </div>
+                
+                <div class="upload-progress" id="uploadProgress">
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="progressBar"></div>
+                    </div>
+                    <div class="progress-text">Processing your workout...</div>
+                </div>
+            </form>
+            
+            <!-- Supported Devices -->
+            <div class="supported-devices">
+                <h3>Supported Devices & Platforms</h3>
+                <div class="device-logos">
+                    <span class="device-logo">🏃 Garmin</span>
+                    <span class="device-logo">🚴 Wahoo</span>
+                    <span class="device-logo">⌚ Polar</span>
+                    <span class="device-logo">🏊 Suunto</span>
+                    <span class="device-logo">💪 Zwift</span>
+                    <span class="device-logo">📱 Any FIT-compatible device</span>
+                </div>
+            </div>
+            
+            <!-- Recent Imports -->
+            <div class="recent-imports">
+                <h2>Recent Imports</h2>
+                
+                {% if recent_imports %}
+                <div class="imports-list">
+                    {% for import in recent_imports %}
+                    <div class="import-item">
+                        <div class="import-icon {% if import.workout_log %}{{ import.workout_log.sport }}{% else %}other{% endif %}">
+                            {% if import.workout_log.sport == 'running' %}🏃
+                            {% elif import.workout_log.sport == 'cycling' %}🚴
+                            {% elif import.workout_log.sport == 'swimming' %}🏊
+                            {% elif import.workout_log.sport == 'strength' %}💪
+                            {% else %}🏋️{% endif %}
+                        </div>
+                        <div class="import-details">
+                            <div class="import-title">
+                                {% if import.workout_log %}
+                                    {{ import.workout_log.title|default:import.original_filename }}
+                                {% else %}
+                                    {{ import.original_filename }}
+                                {% endif %}
+                            </div>
+                            <div class="import-meta">
+                                <span>{{ import.uploaded_at|date:"M d, Y H:i" }}</span>
+                                {% if import.workout_log.total_distance %}
+                                <span>{{ import.workout_log.total_distance|floatformat:0 }}m</span>
+                                {% endif %}
+                                {% if import.workout_log.duration_formatted %}
+                                <span>{{ import.workout_log.duration_formatted }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <span class="import-status {{ import.status }}">{{ import.get_status_display }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <div class="empty-state-icon">📭</div>
+                    <p>No imports yet. Upload your first FIT file!</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+    
+    <!-- Footer -->
+    <footer class="footer">
+        <p>&copy; 2025 GoFit. All rights reserved.</p>
+    </footer>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fitFile');
+        const browseLink = document.getElementById('browseLink');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const uploadBtnText = document.getElementById('uploadBtnText');
+        const uploadForm = document.getElementById('uploadForm');
+        const uploadProgress = document.getElementById('uploadProgress');
+        const progressBar = document.getElementById('progressBar');
+        
+        // Browse link click
+        browseLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            fileInput.click();
+        });
+        
+        // Click on drop zone to browse
+        dropZone.addEventListener('click', function(e) {
+            if (e.target !== uploadBtn && !uploadBtn.contains(e.target)) {
+                fileInput.click();
+            }
+        });
+        
+        // File selected
+        fileInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                const file = this.files[0];
+                if (file.name.toLowerCase().endsWith('.fit')) {
+                    uploadBtn.disabled = false;
+                    uploadBtnText.textContent = 'Upload ' + file.name;
+                    dropZone.querySelector('.drop-zone-text').textContent = 'Selected: ' + file.name;
+                } else {
+                    alert('Please select a .FIT file');
+                    this.value = '';
+                }
+            }
+        });
+        
+        // Drag and drop
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(function(eventName) {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        ['dragenter', 'dragover'].forEach(function(eventName) {
+            dropZone.addEventListener(eventName, highlight, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(function(eventName) {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+        
+        function highlight() {
+            dropZone.classList.add('drag-over');
+        }
+        
+        function unhighlight() {
+            dropZone.classList.remove('drag-over');
+        }
+        
+        dropZone.addEventListener('drop', function(e) {
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.name.toLowerCase().endsWith('.fit')) {
+                    fileInput.files = files;
+                    uploadBtn.disabled = false;
+                    uploadBtnText.textContent = 'Upload ' + file.name;
+                    dropZone.querySelector('.drop-zone-text').textContent = 'Selected: ' + file.name;
+                } else {
+                    alert('Please drop a .FIT file');
+                }
+            }
+        });
+        
+        // Form submit - show progress
+        uploadForm.addEventListener('submit', function() {
+            if (fileInput.files.length > 0) {
+                dropZone.classList.add('uploading');
+                uploadProgress.classList.add('active');
+                uploadBtn.disabled = true;
+                uploadBtnText.textContent = 'Uploading...';
+                
+                // Animate progress bar
+                var progress = 0;
+                var interval = setInterval(function() {
+                    progress += Math.random() * 15;
+                    if (progress > 90) {
+                        progress = 90;
+                        clearInterval(interval);
+                    }
+                    progressBar.style.width = progress + '%';
+                }, 200);
+            }
+        });
+    });
+    </script>
+</body>
+</html>

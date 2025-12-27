@@ -8,6 +8,8 @@ urlpatterns = [
     path("api/v1/accounts/", include("accounts.api.urls")),
     path("api/v1/core/", include("core.api.urls")),
     path("api/v1/activity/", include("activity.api.urls")),
+
+    path("activity/", include("activity.urls")),
 ]
 
 if settings.DEBUG:
