@@ -5,6 +5,8 @@
 
 {% block extra_css %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+
 <style>
     /* ==================== PAGE LAYOUT ==================== */
     .workout-detail {
@@ -51,13 +53,14 @@
         opacity: 0.15;
     }
     
-    .workout-hero.running { --sport-color: var(--color-running); }
-    .workout-hero.cycling { --sport-color: var(--color-cycling); }
-    .workout-hero.swimming { --sport-color: var(--color-swimming); }
-    .workout-hero.strength { --sport-color: var(--color-strength); }
-    .workout-hero.walking { --sport-color: var(--color-walking); }
-    .workout-hero.hiking { --sport-color: var(--color-hiking); }
-    .workout-hero.other { --sport-color: var(--color-other); }
+    /* Sport Colors & Variables */
+    .workout-hero.running { --sport-color: var(--color-running, #3b82f6); }
+    .workout-hero.cycling { --sport-color: var(--color-cycling, #f97316); }
+    .workout-hero.swimming { --sport-color: var(--color-swimming, #06b6d4); }
+    .workout-hero.strength { --sport-color: var(--color-strength, #8b5cf6); }
+    .workout-hero.walking { --sport-color: var(--color-walking, #10b981); }
+    .workout-hero.hiking { --sport-color: var(--color-hiking, #22c55e); }
+    .workout-hero.other { --sport-color: var(--color-other, #64748b); }
     
     .hero-content {
         position: relative;
@@ -108,34 +111,14 @@
         font-size: 0.9rem;
     }
     
-    .sport-badge-large.running {
-        background: var(--color-running-glow);
-        color: var(--color-running);
-    }
-    .sport-badge-large.cycling {
-        background: var(--color-cycling-glow);
-        color: var(--color-cycling);
-    }
-    .sport-badge-large.swimming {
-        background: var(--color-swimming-glow);
-        color: var(--color-swimming);
-    }
-    .sport-badge-large.strength {
-        background: var(--color-strength-glow);
-        color: var(--color-strength);
-    }
-    .sport-badge-large.walking {
-        background: var(--color-walking-glow);
-        color: var(--color-walking);
-    }
-    .sport-badge-large.hiking {
-        background: var(--color-hiking-glow);
-        color: var(--color-hiking);
-    }
-    .sport-badge-large.other {
-        background: var(--color-other-glow);
-        color: var(--color-other);
-    }
+    /* Badge Colors */
+    .sport-badge-large.running { background: rgba(59, 130, 246, 0.15); color: var(--color-running, #3b82f6); }
+    .sport-badge-large.cycling { background: rgba(249, 115, 22, 0.15); color: var(--color-cycling, #f97316); }
+    .sport-badge-large.swimming { background: rgba(6, 182, 212, 0.15); color: var(--color-swimming, #06b6d4); }
+    .sport-badge-large.strength { background: rgba(139, 92, 246, 0.15); color: var(--color-strength, #8b5cf6); }
+    .sport-badge-large.walking { background: rgba(16, 185, 129, 0.15); color: var(--color-walking, #10b981); }
+    .sport-badge-large.hiking { background: rgba(34, 197, 94, 0.15); color: var(--color-hiking, #22c55e); }
+    .sport-badge-large.other { background: rgba(100, 116, 139, 0.15); color: var(--color-other, #64748b); }
     
     .sport-icon-large {
         font-size: 1.5rem;
@@ -257,6 +240,34 @@
         padding: 1rem;
     }
     
+    /* ==================== MAP & STYLES ==================== */
+    #workout-map {
+        height: 450px;
+        width: 100%;
+        background-color: #1a1a1a; /* Dark fallback */
+        z-index: 1;
+    }
+
+    /* Custom Leaflet Markers */
+    .map-marker {
+        border-radius: 50%;
+        border: 2px solid white;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+    }
+    .marker-start {
+        background-color: #22c55e; /* Green */
+    }
+    .marker-end {
+        background-color: #ef4444; /* Red */
+        background-image: repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(255,255,255,.5) 2px, rgba(255,255,255,.5) 4px);
+    }
+    .marker-hover {
+        background-color: #3b82f6;
+        border: 3px solid white;
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.4);
+        transition: transform 0.1s;
+    }
+
     /* ==================== ACTIVITIES & SETS ==================== */
     .activity-card {
         background: var(--bg-secondary);
@@ -476,25 +487,10 @@
         text-transform: uppercase;
     }
     
-    .intensity-badge.active {
-        background: rgba(239, 68, 68, 0.15);
-        color: #f87171;
-    }
-    
-    .intensity-badge.rest {
-        background: rgba(34, 197, 94, 0.15);
-        color: #4ade80;
-    }
-    
-    .intensity-badge.warmup {
-        background: rgba(234, 179, 8, 0.15);
-        color: #facc15;
-    }
-    
-    .intensity-badge.cooldown {
-        background: rgba(59, 130, 246, 0.15);
-        color: #60a5fa;
-    }
+    .intensity-badge.active { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+    .intensity-badge.rest { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
+    .intensity-badge.warmup { background: rgba(234, 179, 8, 0.15); color: #facc15; }
+    .intensity-badge.cooldown { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
     
     /* ==================== DEVICES ==================== */
     .devices-grid {
@@ -649,13 +645,6 @@
         background: var(--bg-elevated);
         border-radius: 3px;
     }
-
-    #workout-map {
-        height: 400px;
-        width: 100%;
-        border-radius: var(--radius-md);
-        z-index: 1;
-    }
 </style>
 {% endblock %}
 
@@ -666,7 +655,6 @@
         Back to Activities
     </a>
     
-    <!-- Hero Section -->
     <div class="workout-hero {{ workout.sport }}">
         <div class="hero-content">
             <div class="hero-header">
@@ -752,34 +740,6 @@
                 </div>
                 {% endif %}
                 
-                {% if workout.total_volume %}
-                <div class="hero-stat">
-                    <div class="hero-stat-value">{{ workout.total_volume|floatformat:0 }}</div>
-                    <div class="hero-stat-label">Volume (kg)</div>
-                </div>
-                {% endif %}
-                
-                {% if workout.total_sets_completed %}
-                <div class="hero-stat">
-                    <div class="hero-stat-value">{{ workout.total_sets_completed }}</div>
-                    <div class="hero-stat-label">Total Sets</div>
-                </div>
-                {% endif %}
-                
-                {% if workout.total_reps_completed %}
-                <div class="hero-stat">
-                    <div class="hero-stat-value">{{ workout.total_reps_completed }}</div>
-                    <div class="hero-stat-label">Total Reps</div>
-                </div>
-                {% endif %}
-                
-                {% if workout.perceived_exertion %}
-                <div class="hero-stat">
-                    <div class="hero-stat-value">{{ workout.perceived_exertion }}/10</div>
-                    <div class="hero-stat-label">RPE</div>
-                </div>
-                {% endif %}
-                
                 {% if workout.training_stress_score %}
                 <div class="hero-stat">
                     <div class="hero-stat-value">{{ workout.training_stress_score|floatformat:0 }}</div>
@@ -804,7 +764,6 @@
     </div>
     {% endif %}
     
-    <!-- Performance Charts -->
     {% if has_records %}
     <div class="section">
         <div class="section-header">
@@ -829,7 +788,6 @@
     </div>
     {% endif %}
     
-    <!-- Exercises / Activities -->
     {% if activity_logs %}
     <div class="section">
         <div class="section-header">
@@ -904,7 +862,6 @@
     </div>
     {% endif %}
     
-    <!-- Laps -->
     {% if laps %}
     <div class="section">
         <div class="section-header">
@@ -955,7 +912,6 @@
     </div>
     {% endif %}
     
-    <!-- Notes -->
     {% if workout.notes %}
     <div class="section">
         <div class="section-header">
@@ -970,7 +926,6 @@
     </div>
     {% endif %}
     
-    <!-- Devices -->
     {% if devices %}
     <div class="section">
         <div class="section-header">
@@ -1004,7 +959,6 @@
     </div>
     {% endif %}
     
-    <!-- Import Info -->
     {% if fit_import %}
     <div class="section">
         <div class="section-header">
@@ -1029,7 +983,6 @@
     </div>
     {% endif %}
     
-    <!-- Additional Details -->
     <div class="section">
         <div class="section-header">
             <h2 class="section-title">
@@ -1072,164 +1025,227 @@
         card.classList.toggle('expanded');
     }
 
+    // Global variables for Map-Chart synchronization
+    let workoutMap = null;
+    let focusMarker = null;
+
+    // --- MAP INITIALIZATION ---
     {% if map_coords_json %}
     document.addEventListener('DOMContentLoaded', function() {
         const mapCoords = JSON.parse('{{ map_coords_json|escapejs }}');
         
         if (mapCoords && mapCoords.length > 0) {
-            // Initialize map (center will be reset by fitBounds)
-            const map = L.map('workout-map');
-            
-            // Add OpenStreetMap tiles
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            }).addTo(map);
+            // Initialize map with a dark theme tile layer (CartoDB Dark Matter)
+            workoutMap = L.map('workout-map', {
+                zoomControl: false, // Cleaner look
+                attributionControl: false
+            });
 
-            // Create polyline
+            // Add CartoDB Dark Matter tiles (Free/Public domain mostly)
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                subdomains: 'abcd',
+                maxZoom: 20
+            }).addTo(workoutMap);
+
+            // Get sport color from the computed style of the hero element or default to blue
+            const heroEl = document.querySelector('.workout-hero');
+            const sportColor = getComputedStyle(heroEl).getPropertyValue('--sport-color').trim() || '#3b82f6';
+
+            // Draw the route Polyline
             const polyline = L.polyline(mapCoords, {
-                color: 'var(--accent-primary)', // Use your CSS variable color
-                weight: 4,
-                opacity: 0.8,
-                lineJoin: 'round'
-            }).addTo(map);
+                color: sportColor,
+                weight: 5,
+                opacity: 0.9,
+                lineJoin: 'round',
+                lineCap: 'round'
+            }).addTo(workoutMap);
 
-            // Fit map to route
-            map.fitBounds(polyline.getBounds(), {
-                padding: [50, 50] // Add some padding around the route
+            // Add Start Marker (Green Dot)
+            const startPoint = mapCoords[0];
+            const startIcon = L.divIcon({
+                className: 'map-marker marker-start',
+                iconSize: [12, 12],
+                iconAnchor: [6, 6]
+            });
+            L.marker(startPoint, {icon: startIcon, zIndexOffset: 100}).addTo(workoutMap);
+
+            // Add End Marker (Red Dot)
+            const endPoint = mapCoords[mapCoords.length - 1];
+            const endIcon = L.divIcon({
+                className: 'map-marker marker-end',
+                iconSize: [12, 12],
+                iconAnchor: [6, 6]
+            });
+            L.marker(endPoint, {icon: endIcon, zIndexOffset: 100}).addTo(workoutMap);
+
+            // Initialize Focus Marker (Hidden initially)
+            const focusIcon = L.divIcon({
+                className: 'map-marker marker-hover',
+                iconSize: [16, 16],
+                iconAnchor: [8, 8]
+            });
+            focusMarker = L.marker(startPoint, {
+                icon: focusIcon, 
+                zIndexOffset: 1000,
+                opacity: 0 // hidden by default
+            }).addTo(workoutMap);
+
+            // Fit bounds with padding
+            workoutMap.fitBounds(polyline.getBounds(), {
+                padding: [40, 40],
+                animate: false
             });
         }
     });
     {% endif %}
     
+    // --- CHART INITIALIZATION ---
     {% if has_records %}
-    // Chart data
-    const recordsData = JSON.parse('{{ records_json|escapejs }}');
-    
-    // Prepare labels
-    const labels = recordsData.map(r => {
-        const mins = Math.floor(r.elapsed_seconds / 60);
-        const secs = Math.floor(r.elapsed_seconds % 60);
-        return mins + ':' + secs.toString().padStart(2, '0');
-    });
-    
-    // Dataset configurations
-    const datasets = {
-        heartRate: {
-            label: 'Heart Rate (bpm)',
-            data: recordsData.map(r => r.heart_rate),
-            borderColor: '#ef4444',
-            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-        },
-        speed: {
-            label: 'Speed (m/s)',
-            data: recordsData.map(r => r.speed),
-            borderColor: '#3b82f6',
-            backgroundColor: 'rgba(59, 130, 246, 0.1)',
-        },
-        altitude: {
-            label: 'Altitude (m)',
-            data: recordsData.map(r => r.altitude),
-            borderColor: '#10b981',
-            backgroundColor: 'rgba(16, 185, 129, 0.1)',
-        },
-        power: {
-            label: 'Power (W)',
-            data: recordsData.map(r => r.power),
-            borderColor: '#f59e0b',
-            backgroundColor: 'rgba(245, 158, 11, 0.1)',
-        },
-        cadence: {
-            label: 'Cadence (rpm)',
-            data: recordsData.map(r => r.cadence),
-            borderColor: '#8b5cf6',
-            backgroundColor: 'rgba(139, 92, 246, 0.1)',
-        }
-    };
-    
-    // Chart initialization
-    const ctx = document.getElementById('performanceChart').getContext('2d');
-    
-    const chart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                ...datasets.heartRate,
-                fill: true,
-                tension: 0.3,
-                pointRadius: 0,
-                borderWidth: 2,
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                },
-                tooltip: {
-                    backgroundColor: '#18181b',
-                    titleColor: '#fafafa',
-                    bodyColor: '#a1a1aa',
-                    borderColor: '#27272a',
-                    borderWidth: 1,
-                    cornerRadius: 8,
-                    padding: 12,
-                }
-            },
-            scales: {
-                x: {
-                    display: true,
-                    grid: {
-                        color: 'rgba(255, 255, 255, 0.05)',
-                    },
-                    ticks: {
-                        color: '#71717a',
-                        maxTicksLimit: 8,
-                        font: {
-                            family: "'JetBrains Mono', monospace",
-                            size: 10
-                        }
-                    }
-                },
-                y: {
-                    display: true,
-                    beginAtZero: false,
-                    grid: {
-                        color: 'rgba(255, 255, 255, 0.05)',
-                    },
-                    ticks: {
-                        color: '#71717a',
-                        font: {
-                            family: "'JetBrains Mono', monospace",
-                            size: 10
-                        }
-                    }
-                }
-            },
-            interaction: {
-                intersect: false,
-                mode: 'index'
+    document.addEventListener('DOMContentLoaded', function() {
+        const recordsData = JSON.parse('{{ records_json|escapejs }}');
+        
+        // Prepare labels
+        const labels = recordsData.map(r => {
+            const mins = Math.floor(r.elapsed_seconds / 60);
+            const secs = Math.floor(r.elapsed_seconds % 60);
+            return mins + ':' + secs.toString().padStart(2, '0');
+        });
+        
+        // Function to sync map with chart hover
+        function updateMapMarker(index) {
+            if (!workoutMap || !focusMarker || !recordsData[index]) return;
+            
+            const point = recordsData[index];
+            if (point.latitude && point.longitude) {
+                focusMarker.setLatLng([point.latitude, point.longitude]);
+                focusMarker.setOpacity(1);
             }
         }
-    });
-    
-    // Tab switching
-    document.querySelectorAll('.chart-tab').forEach(tab => {
-        tab.addEventListener('click', function() {
-            document.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('active'));
-            this.classList.add('active');
-            
-            const chartType = this.dataset.chart;
-            chart.data.datasets[0] = {
-                ...datasets[chartType],
-                fill: true,
-                tension: 0.3,
-                pointRadius: 0,
-                borderWidth: 2,
-            };
-            chart.update();
+
+        // Dataset configurations
+        const datasets = {
+            heartRate: {
+                label: 'Heart Rate (bpm)',
+                data: recordsData.map(r => r.heart_rate),
+                borderColor: '#ef4444',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            },
+            speed: {
+                label: 'Speed (m/s)',
+                data: recordsData.map(r => r.speed),
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            },
+            altitude: {
+                label: 'Altitude (m)',
+                data: recordsData.map(r => r.altitude),
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+            },
+            power: {
+                label: 'Power (W)',
+                data: recordsData.map(r => r.power),
+                borderColor: '#f59e0b',
+                backgroundColor: 'rgba(245, 158, 11, 0.1)',
+            },
+            cadence: {
+                label: 'Cadence (rpm)',
+                data: recordsData.map(r => r.cadence),
+                borderColor: '#8b5cf6',
+                backgroundColor: 'rgba(139, 92, 246, 0.1)',
+            }
+        };
+        
+        const ctx = document.getElementById('performanceChart').getContext('2d');
+        
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    ...datasets.heartRate,
+                    fill: true,
+                    tension: 0.1, // Less curve for precision
+                    pointRadius: 0,
+                    pointHoverRadius: 4, // Show point on hover
+                    borderWidth: 2,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: '#18181b',
+                        titleColor: '#fafafa',
+                        bodyColor: '#a1a1aa',
+                        borderColor: '#27272a',
+                        borderWidth: 1,
+                        padding: 10,
+                        displayColors: false,
+                    }
+                },
+                hover: {
+                    mode: 'index',
+                    intersect: false
+                },
+                onHover: (e, elements) => {
+                    if (elements && elements.length > 0) {
+                        const index = elements[0].index;
+                        updateMapMarker(index);
+                    } else {
+                        // Optional: Hide marker when leaving chart
+                        // if(focusMarker) focusMarker.setOpacity(0);
+                    }
+                },
+                scales: {
+                    x: {
+                        display: true,
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: {
+                            color: '#71717a',
+                            maxTicksLimit: 8,
+                            font: { family: "'JetBrains Mono', monospace", size: 10 }
+                        }
+                    },
+                    y: {
+                        display: true,
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: {
+                            color: '#71717a',
+                            font: { family: "'JetBrains Mono', monospace", size: 10 }
+                        }
+                    }
+                },
+                interaction: {
+                    mode: 'nearest',
+                    axis: 'x',
+                    intersect: false
+                }
+            }
+        });
+        
+        // Tab switching logic
+        document.querySelectorAll('.chart-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                
+                const chartType = this.dataset.chart;
+                chart.data.datasets[0] = {
+                    ...datasets[chartType],
+                    fill: true,
+                    tension: 0.1,
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                    borderWidth: 2,
+                };
+                chart.update();
+            });
         });
     });
     {% endif %}
