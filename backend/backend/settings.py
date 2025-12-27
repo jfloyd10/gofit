@@ -24,7 +24,8 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework_simplejwt",
     "accounts",
-    'core'
+    'core',
+    'activity'
 ]
 
 REST_FRAMEWORK = {
