@@ -177,7 +177,6 @@ class FitFileParserService:
         sub_sport_lower = str(sub_sport).lower()
         return self.SUB_SPORT_MAP.get(sub_sport_lower, SubSportType.GENERIC)
     
-    @transaction.atomic
     def parse_and_import(
         self, 
         file_path: str,
@@ -217,6 +216,7 @@ class FitFileParserService:
             raise ValueError("FIT file does not contain session data")
         
         # Create the import record
+        # Note: Created outside atomic block to persist even if workout creation fails
         file_id = data.get('file_id', {})
         fit_import = FitFileImport.objects.create(
             user=self.user,
@@ -233,30 +233,32 @@ class FitFileParserService:
         )
         
         try:
-            # Create the workout log
-            session = data['session']
-            workout_log = self._create_workout_log(session, data)
-            
-            # Create lap records
-            for i, lap_data in enumerate(data['laps'], 1):
-                self._create_lap_log(workout_log, lap_data, i)
-            
-            # Create time-series records (with sampling for performance)
-            self._create_record_data_points(workout_log, data['records'])
-            
-            # Create device info
-            for device_data in data['devices']:
-                self._create_device_info(workout_log, device_data)
-            
-            # Update import record
-            fit_import.workout_log = workout_log
-            fit_import.status = 'completed'
-            fit_import.processed_at = django_timezone.now()
-            fit_import.save()
+            with transaction.atomic():
+                # Create the workout log
+                session = data['session']
+                workout_log = self._create_workout_log(session, data)
+                
+                # Create lap records
+                for i, lap_data in enumerate(data['laps'], 1):
+                    self._create_lap_log(workout_log, lap_data, i)
+                
+                # Create time-series records (with sampling for performance)
+                self._create_record_data_points(workout_log, data['records'])
+                
+                # Create device info
+                for device_data in data['devices']:
+                    self._create_device_info(workout_log, device_data)
+                
+                # Update import record
+                fit_import.workout_log = workout_log
+                fit_import.status = 'completed'
+                fit_import.processed_at = django_timezone.now()
+                fit_import.save()
             
             return workout_log, fit_import
             
         except Exception as e:
+            # Transaction rolled back workout data, but fit_import persists
             fit_import.status = 'failed'
             fit_import.error_message = str(e)
             fit_import.save()
@@ -522,15 +524,18 @@ class FitFileParserService:
     
     def _create_device_info(self, workout_log: WorkoutLog, device_data: Dict) -> DeviceInfo:
         """Create a DeviceInfo entry from device data."""
-        device = DeviceInfo.objects.create(
+        # Use update_or_create to handle duplicate device indices in same file/workout
+        device, created = DeviceInfo.objects.update_or_create(
             workout_log=workout_log,
             device_index=str(device_data.get('device_index', 'unknown')),
-            manufacturer=str(device_data.get('manufacturer', '')),
-            product_name=str(device_data.get('product_name', '')),
-            product_id=self._safe_int(device_data.get('product')),
-            serial_number=str(device_data.get('serial_number', '')) if device_data.get('serial_number') else None,
-            device_type=str(device_data.get('device_type', '')) if device_data.get('device_type') else None,
-            software_version=str(device_data.get('software_version', '')) if device_data.get('software_version') else None,
+            defaults={
+                'manufacturer': str(device_data.get('manufacturer', '')),
+                'product_name': str(device_data.get('product_name', '')),
+                'product_id': self._safe_int(device_data.get('product')),
+                'serial_number': str(device_data.get('serial_number', '')) if device_data.get('serial_number') else None,
+                'device_type': str(device_data.get('device_type', '')) if device_data.get('device_type') else None,
+                'software_version': str(device_data.get('software_version', '')) if device_data.get('software_version') else None,
+            }
         )
         
         return device
