@@ -1,5 +1,5 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
+from django.urls import path
+from rest_framework.routers import SimpleRouter
 
 from activity.api.views import (
     # ViewSets
@@ -24,8 +24,8 @@ from activity.api.views import (
 
 app_name = 'activity'
 
-# Create router for ViewSets
-router = DefaultRouter(trailing_slash=True)
+# Use SimpleRouter instead of DefaultRouter to avoid format_suffix_patterns conflict
+router = SimpleRouter(trailing_slash=True)
 router.register(r'workouts', WorkoutLogViewSet, basename='workout')
 router.register(r'activities', ActivityLogViewSet, basename='activity-log')
 router.register(r'sets', SetLogViewSet, basename='set')
@@ -33,7 +33,7 @@ router.register(r'laps', LapLogViewSet, basename='lap')
 router.register(r'personal-records', PersonalRecordViewSet, basename='personal-record')
 router.register(r'subscriptions', ProgramSubscriptionViewSet, basename='subscription')
 
-# URL patterns - use router.urls directly without format_suffix_patterns
+# URL patterns
 urlpatterns = router.urls + [
     # FIT File Import
     path('fit-import/', FitFileImportView.as_view(), name='fit-import'),
