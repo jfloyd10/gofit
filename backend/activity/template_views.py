@@ -11,6 +11,10 @@ from django.http import JsonResponse
 from activity.models import FitFileImport, WorkoutLog
 from activity.services.fit_parser import FitFileParserService
 
+import json 
+import polyline 
+from decimal import Decimal
+
 
 @method_decorator(login_required, name='dispatch')
 class FitFileUploadView(View):
@@ -387,6 +391,16 @@ class WorkoutDetailView(View):
         
         # Serialize to JSON string for safe JavaScript embedding
         records_json = json.dumps(records_sample)
+
+        map_coords_json = None
+        if workout.map_polyline:
+            try:
+                # Decode polyline string to list of (lat, lng) tuples
+                coords = polyline.decode(workout.map_polyline)
+                # Convert to list of lists for JSON serialization
+                map_coords_json = json.dumps([list(c) for c in coords])
+            except Exception as e:
+                print(f"Error decoding polyline: {e}")
         
         # Get FIT import info if exists
         fit_import = FitFileImport.objects.filter(workout_log=workout).first()
@@ -406,6 +420,7 @@ class WorkoutDetailView(View):
             'laps': laps,
             'devices': devices,
             'records_json': records_json,
+            'map_coords_json': map_coords_json,
             'has_records': records_count > 0,
             'fit_import': fit_import,
             'stats': stats,

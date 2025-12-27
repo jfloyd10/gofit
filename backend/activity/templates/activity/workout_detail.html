@@ -649,6 +649,13 @@
         background: var(--bg-elevated);
         border-radius: 3px;
     }
+
+    #workout-map {
+        height: 400px;
+        width: 100%;
+        border-radius: var(--radius-md);
+        z-index: 1;
+    }
 </style>
 {% endblock %}
 
@@ -782,6 +789,20 @@
             </div>
         </div>
     </div>
+
+    {% if map_coords_json %}
+    <div class="section">
+        <div class="section-header">
+            <h2 class="section-title">
+                <span>🗺️</span>
+                Route Map
+            </h2>
+        </div>
+        <div class="section-content" style="padding: 0;">
+            <div id="workout-map"></div>
+        </div>
+    </div>
+    {% endif %}
     
     <!-- Performance Charts -->
     {% if has_records %}

@@ -3,6 +3,8 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional, Dict, Any, List, Tuple
 from pathlib import Path
+import polyline
+
 
 try:
     import fitparse
@@ -261,98 +263,128 @@ class FitFileParserService:
             raise
     
     def _create_workout_log(self, session: Dict, data: Dict) -> WorkoutLog:
-        """Create a WorkoutLog from session data."""
-        # Determine start and end times
-        start_time = session.get('start_time')
-        if not start_time:
-            start_time = session.get('timestamp')
-        
-        end_time = session.get('timestamp')
-        
-        # Build title
-        sport = self._map_sport(session.get('sport'))
-        sub_sport = self._map_sub_sport(session.get('sub_sport'))
-        
-        workout_name = data.get('workout', {}).get('wkt_name') if data.get('workout') else None
-        if workout_name:
-            title = workout_name
-        else:
-            sport_display = dict(SportType.choices).get(sport, sport)
-            title = f"{sport_display}"
-            if sub_sport != SubSportType.GENERIC:
-                sub_sport_display = dict(SubSportType.choices).get(sub_sport, sub_sport)
-                title += f" ({sub_sport_display})"
-        
-        # Get position data from first/last records
-        first_record = data['records'][0] if data['records'] else {}
-        last_record = data['records'][-1] if data['records'] else {}
-        
-        workout_log = WorkoutLog.objects.create(
-            user=self.user,
-            title=title,
-            source=WorkoutSource.GARMIN_FIT,
-            external_id=str(data.get('file_id', {}).get('serial_number', '')),
-            sport=sport,
-            sub_sport=sub_sport,
-            started_at=start_time,
-            ended_at=end_time,
+            """Create a WorkoutLog from session data."""
+            # Determine start and end times
+            start_time = session.get('start_time')
+            if not start_time:
+                start_time = session.get('timestamp')
             
-            # Duration
-            total_elapsed_time=self._safe_decimal(session.get('total_elapsed_time'), 2),
-            total_timer_time=self._safe_decimal(session.get('total_timer_time'), 2),
-            total_moving_time=self._safe_decimal(session.get('total_moving_time'), 2),
+            end_time = session.get('timestamp')
             
-            # Distance
-            total_distance=self._safe_decimal(session.get('total_distance'), 2),
+            # Build title
+            sport = self._map_sport(session.get('sport'))
+            sub_sport = self._map_sub_sport(session.get('sub_sport'))
             
-            # Elevation
-            total_ascent=self._safe_int(session.get('total_ascent')),
-            total_descent=self._safe_int(session.get('total_descent')),
-            min_altitude=self._safe_decimal(session.get('enhanced_min_altitude') or session.get('min_altitude'), 2),
-            max_altitude=self._safe_decimal(session.get('enhanced_max_altitude') or session.get('max_altitude'), 2),
+            workout_name = data.get('workout', {}).get('wkt_name') if data.get('workout') else None
+            if workout_name:
+                title = workout_name
+            else:
+                sport_display = dict(SportType.choices).get(sport, sport)
+                title = f"{sport_display}"
+                if sub_sport != SubSportType.GENERIC:
+                    sub_sport_display = dict(SubSportType.choices).get(sub_sport, sub_sport)
+                    title += f" ({sub_sport_display})"
             
-            # Energy
-            total_calories=self._safe_int(session.get('total_calories')),
-            total_work=self._safe_int(session.get('total_work')),
+            # Get position data from first/last records for start/end points
+            first_record = data['records'][0] if data['records'] else {}
+            last_record = data['records'][-1] if data['records'] else {}
+
+            # --- LOGIC START: Generate Map Polyline ---
+            map_polyline_str = None
+            records = data.get('records', [])
             
-            # Heart Rate
-            avg_heart_rate=self._safe_int(session.get('avg_heart_rate')),
-            max_heart_rate=self._safe_int(session.get('max_heart_rate')),
-            min_heart_rate=self._safe_int(session.get('min_heart_rate')),
+            # Only process coordinates if we have records
+            if records:
+                coordinates = []
+                for record in records:
+                    lat_semi = record.get('position_lat')
+                    lng_semi = record.get('position_long')
+                    
+                    # Check if valid coordinates exist
+                    if lat_semi is not None and lng_semi is not None:
+                        # Convert semicircles to degrees (float required for polyline lib)
+                        # Formula: semicircles * (180 / 2^31)
+                        lat = lat_semi * self.SEMICIRCLE_TO_DEGREES
+                        lng = lng_semi * self.SEMICIRCLE_TO_DEGREES
+                        coordinates.append((lat, lng))
+                
+                # Encode if we found points
+                if coordinates:
+                    try:
+                        map_polyline_str = polyline.encode(coordinates)
+                    except Exception as e:
+                        self.warnings.append(f"Failed to encode map polyline: {str(e)}")
+            # --- LOGIC END ---
+
+            workout_log = WorkoutLog.objects.create(
+                user=self.user,
+                title=title,
+                source=WorkoutSource.GARMIN_FIT,
+                external_id=str(data.get('file_id', {}).get('serial_number', '')),
+                sport=sport,
+                sub_sport=sub_sport,
+                started_at=start_time,
+                ended_at=end_time,
+                
+                # NEW FIELD
+                map_polyline=map_polyline_str,
+
+                # Duration
+                total_elapsed_time=self._safe_decimal(session.get('total_elapsed_time'), 2),
+                total_timer_time=self._safe_decimal(session.get('total_timer_time'), 2),
+                total_moving_time=self._safe_decimal(session.get('total_moving_time'), 2),
+                
+                # Distance
+                total_distance=self._safe_decimal(session.get('total_distance'), 2),
+                
+                # Elevation
+                total_ascent=self._safe_int(session.get('total_ascent')),
+                total_descent=self._safe_int(session.get('total_descent')),
+                min_altitude=self._safe_decimal(session.get('enhanced_min_altitude') or session.get('min_altitude'), 2),
+                max_altitude=self._safe_decimal(session.get('enhanced_max_altitude') or session.get('max_altitude'), 2),
+                
+                # Energy
+                total_calories=self._safe_int(session.get('total_calories')),
+                total_work=self._safe_int(session.get('total_work')),
+                
+                # Heart Rate
+                avg_heart_rate=self._safe_int(session.get('avg_heart_rate')),
+                max_heart_rate=self._safe_int(session.get('max_heart_rate')),
+                min_heart_rate=self._safe_int(session.get('min_heart_rate')),
+                
+                # Speed
+                avg_speed=self._safe_decimal(session.get('enhanced_avg_speed') or session.get('avg_speed'), 3),
+                max_speed=self._safe_decimal(session.get('enhanced_max_speed') or session.get('max_speed'), 3),
+                
+                # Power
+                avg_power=self._safe_int(session.get('avg_power')),
+                max_power=self._safe_int(session.get('max_power')),
+                normalized_power=self._safe_int(session.get('normalized_power')),
+                
+                # Cadence
+                avg_cadence=self._safe_int(session.get('avg_cadence') or session.get('avg_running_cadence')),
+                max_cadence=self._safe_int(session.get('max_cadence') or session.get('max_running_cadence')),
+                
+                # Training metrics
+                training_stress_score=self._safe_decimal(session.get('training_stress_score'), 2),
+                intensity_factor=self._safe_decimal(session.get('intensity_factor'), 3),
+                training_effect_aerobic=self._safe_decimal(session.get('total_training_effect'), 1),
+                training_effect_anaerobic=self._safe_decimal(session.get('total_anaerobic_training_effect'), 1),
+                
+                # Running dynamics
+                avg_vertical_oscillation=self._safe_decimal(session.get('avg_vertical_oscillation'), 1),
+                avg_stance_time=self._safe_decimal(session.get('avg_stance_time'), 1),
+                avg_stride_length=self._safe_decimal(session.get('avg_step_length'), 1),
+                avg_vertical_ratio=self._safe_decimal(session.get('avg_vertical_ratio'), 2),
+                
+                # Position
+                start_lat=self._convert_semicircles_to_degrees(first_record.get('position_lat')),
+                start_long=self._convert_semicircles_to_degrees(first_record.get('position_long')),
+                end_lat=self._convert_semicircles_to_degrees(last_record.get('position_lat')),
+                end_long=self._convert_semicircles_to_degrees(last_record.get('position_long')),
+            )
             
-            # Speed
-            avg_speed=self._safe_decimal(session.get('enhanced_avg_speed') or session.get('avg_speed'), 3),
-            max_speed=self._safe_decimal(session.get('enhanced_max_speed') or session.get('max_speed'), 3),
-            
-            # Power
-            avg_power=self._safe_int(session.get('avg_power')),
-            max_power=self._safe_int(session.get('max_power')),
-            normalized_power=self._safe_int(session.get('normalized_power')),
-            
-            # Cadence
-            avg_cadence=self._safe_int(session.get('avg_cadence') or session.get('avg_running_cadence')),
-            max_cadence=self._safe_int(session.get('max_cadence') or session.get('max_running_cadence')),
-            
-            # Training metrics
-            training_stress_score=self._safe_decimal(session.get('training_stress_score'), 2),
-            intensity_factor=self._safe_decimal(session.get('intensity_factor'), 3),
-            training_effect_aerobic=self._safe_decimal(session.get('total_training_effect'), 1),
-            training_effect_anaerobic=self._safe_decimal(session.get('total_anaerobic_training_effect'), 1),
-            
-            # Running dynamics
-            avg_vertical_oscillation=self._safe_decimal(session.get('avg_vertical_oscillation'), 1),
-            avg_stance_time=self._safe_decimal(session.get('avg_stance_time'), 1),
-            avg_stride_length=self._safe_decimal(session.get('avg_step_length'), 1),
-            avg_vertical_ratio=self._safe_decimal(session.get('avg_vertical_ratio'), 2),
-            
-            # Position
-            start_lat=self._convert_semicircles_to_degrees(first_record.get('position_lat')),
-            start_long=self._convert_semicircles_to_degrees(first_record.get('position_long')),
-            end_lat=self._convert_semicircles_to_degrees(last_record.get('position_lat')),
-            end_long=self._convert_semicircles_to_degrees(last_record.get('position_long')),
-        )
-        
-        return workout_log
+            return workout_log
     
     def _create_lap_log(self, workout_log: WorkoutLog, lap_data: Dict, lap_number: int) -> LapLog:
         """Create a LapLog from lap data."""

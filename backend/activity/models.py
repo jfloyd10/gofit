@@ -470,6 +470,9 @@ class WorkoutLog(models.Model):
         default=False,
         help_text="Whether this workout is visible to others"
     )
+
+
+    map_polyline = models.TextField(blank=True, null=True, help_text="Encoded polyline string of the route")
     
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
@@ -621,8 +624,7 @@ class LapLog(models.Model):
     # Notes
     notes = models.TextField(blank=True, null=True)
 
-    map_polyline = models.TextField(blank=True, null=True)
-    
+   
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
