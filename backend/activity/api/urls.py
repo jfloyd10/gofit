@@ -22,7 +22,7 @@ from activity.api.views import (
     SportDistributionView,
 )
 
-app_name = 'activity'
+app_name = 'activity_api'
 
 # Use SimpleRouter instead of DefaultRouter to avoid format_suffix_patterns conflict
 router = SimpleRouter(trailing_slash=True)
