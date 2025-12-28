@@ -684,16 +684,16 @@
                 </div>
                 {% endif %}
                 
-                {% if workout.total_distance %}
+                {% if formatted_workout.distance %}
                 <div class="hero-stat">
-                    <div class="hero-stat-value">{{ workout.total_distance|floatformat:0 }}</div>
-                    <div class="hero-stat-label">Meters</div>
+                    <div class="hero-stat-value">{{ formatted_workout.distance }}</div>
+                    <div class="hero-stat-label">{{ formatted_workout.distance_label }}</div>
                 </div>
                 {% endif %}
                 
-                {% if workout.total_calories %}
+                {% if formatted_workout.calories %}
                 <div class="hero-stat">
-                    <div class="hero-stat-value">{{ workout.total_calories }}</div>
+                    <div class="hero-stat-value">{{ formatted_workout.calories }}</div>
                     <div class="hero-stat-label">Calories</div>
                 </div>
                 {% endif %}
@@ -712,10 +712,10 @@
                 </div>
                 {% endif %}
                 
-                {% if workout.avg_speed %}
+                {% if formatted_workout.avg_speed %}
                 <div class="hero-stat">
-                    <div class="hero-stat-value">{{ workout.avg_speed|floatformat:1 }}</div>
-                    <div class="hero-stat-label">Avg m/s</div>
+                    <div class="hero-stat-value">{{ formatted_workout.avg_speed }}</div>
+                    <div class="hero-stat-label">{{ formatted_workout.avg_speed_label }}</div>
                 </div>
                 {% endif %}
                 
@@ -733,16 +733,16 @@
                 </div>
                 {% endif %}
                 
-                {% if workout.total_ascent %}
+                {% if formatted_workout.elevation %}
                 <div class="hero-stat">
-                    <div class="hero-stat-value">{{ workout.total_ascent }}</div>
-                    <div class="hero-stat-label">Elev Gain (m)</div>
+                    <div class="hero-stat-value">{{ formatted_workout.elevation }}</div>
+                    <div class="hero-stat-label">{{ formatted_workout.elevation_label }}</div>
                 </div>
                 {% endif %}
                 
-                {% if workout.training_stress_score %}
+                {% if formatted_workout.tss %}
                 <div class="hero-stat">
-                    <div class="hero-stat-value">{{ workout.training_stress_score|floatformat:0 }}</div>
+                    <div class="hero-stat-value">{{ formatted_workout.tss }}</div>
                     <div class="hero-stat-label">TSS</div>
                 </div>
                 {% endif %}
@@ -788,7 +788,7 @@
     </div>
     {% endif %}
     
-    {% if activity_logs %}
+    {% if formatted_activities %}
     <div class="section">
         <div class="section-header">
             <h2 class="section-title">
@@ -798,7 +798,8 @@
             <span class="section-badge">{{ stats.total_activities }} activities · {{ stats.total_sets }} sets</span>
         </div>
         <div class="section-content">
-            {% for activity in activity_logs %}
+            {% for wrapper in formatted_activities %}
+            {% with activity=wrapper.obj sets=wrapper.sets %}
             <div class="activity-card expanded" id="activity-{{ activity.id }}">
                 <div class="activity-header" onclick="toggleActivity('activity-{{ activity.id }}')">
                     <div class="activity-main">
@@ -810,14 +811,14 @@
                             <div class="activity-subtitle">
                                 {% if activity.total_sets %}{{ activity.total_sets }} sets{% endif %}
                                 {% if activity.total_reps %} · {{ activity.total_reps }} reps{% endif %}
-                                {% if activity.total_volume %} · {{ activity.total_volume|floatformat:1 }}kg{% endif %}
+                                {% if wrapper.formatted_volume %} · {{ wrapper.formatted_volume }}{% endif %}
                             </div>
                         </div>
                     </div>
                     <span class="activity-toggle">▼</span>
                 </div>
                 <div class="activity-body">
-                    {% if activity.set_logs.all %}
+                    {% if sets %}
                     <table class="sets-table">
                         <thead>
                             <tr>
@@ -830,19 +831,15 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% for set in activity.set_logs.all %}
+                            {% for set in sets %}
                             <tr>
                                 <td><span class="set-number-badge">{{ set.set_number }}</span></td>
-                                <td class="set-weight">
-                                    {% if set.weight %}{{ set.weight|floatformat:1 }}kg{% if set.is_per_side %} /side{% endif %}{% else %}—{% endif %}
-                                </td>
+                                <td class="set-weight">{{ set.weight_display }}{% if set.is_per_side %} /side{% endif %}</td>
                                 <td class="set-reps">
-                                    {% if set.reps %}{{ set.reps }}{% if set.is_to_failure %} ⚡{% endif %}{% else %}—{% endif %}
+                                    {{ set.reps }}{% if set.is_to_failure %} ⚡{% endif %}
                                 </td>
                                 <td>{% if set.rpe %}{{ set.rpe }}{% else %}—{% endif %}</td>
-                                <td class="set-weight">
-                                    {% if set.weight and set.reps %}{{ set.volume|floatformat:0 }}kg{% else %}—{% endif %}
-                                </td>
+                                <td class="set-weight">{{ set.volume_display }}</td>
                                 <td>
                                     <span class="set-status {% if set.is_completed %}completed{% else %}incomplete{% endif %}">
                                         {% if set.is_completed %}✓{% else %}○{% endif %}
@@ -857,12 +854,13 @@
                     {% endif %}
                 </div>
             </div>
+            {% endwith %}
             {% endfor %}
         </div>
     </div>
     {% endif %}
     
-    {% if laps %}
+    {% if formatted_laps %}
     <div class="section">
         <div class="section-header">
             <h2 class="section-title">
@@ -880,24 +878,22 @@
                             <th>Time</th>
                             <th>Distance</th>
                             <th>Avg HR</th>
-                            <th>Max HR</th>
-                            <th>Speed</th>
+                            <th>{{ speed_label_header }}</th>
                             <th>Power</th>
                             <th>Cadence</th>
                             <th>Intensity</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for lap in laps %}
+                        {% for lap in formatted_laps %}
                         <tr>
                             <td><span class="lap-number-badge">{{ lap.lap_number }}</span></td>
-                            <td class="lap-value">{% if lap.total_elapsed_time %}{{ lap.total_elapsed_time|floatformat:0 }}s{% else %}—{% endif %}</td>
-                            <td class="lap-value">{% if lap.total_distance %}{{ lap.total_distance|floatformat:0 }}m{% else %}—{% endif %}</td>
-                            <td class="lap-value">{% if lap.avg_heart_rate %}{{ lap.avg_heart_rate }}{% else %}—{% endif %}</td>
-                            <td class="lap-value">{% if lap.max_heart_rate %}{{ lap.max_heart_rate }}{% else %}—{% endif %}</td>
-                            <td class="lap-value">{% if lap.avg_speed %}{{ lap.avg_speed|floatformat:2 }}{% else %}—{% endif %}</td>
-                            <td class="lap-value">{% if lap.avg_power %}{{ lap.avg_power }}W{% else %}—{% endif %}</td>
-                            <td class="lap-value">{% if lap.avg_cadence %}{{ lap.avg_cadence }}{% else %}—{% endif %}</td>
+                            <td class="lap-value">{{ lap.time }}</td>
+                            <td class="lap-value">{{ lap.distance }}</td>
+                            <td class="lap-value">{% if lap.hr %}{{ lap.hr }}{% else %}—{% endif %}</td>
+                            <td class="lap-value">{{ lap.speed }}</td>
+                            <td class="lap-value">{% if lap.power %}{{ lap.power }}W{% else %}—{% endif %}</td>
+                            <td class="lap-value">{% if lap.cadence %}{{ lap.cadence }}{% else %}—{% endif %}</td>
                             <td>
                                 {% if lap.intensity %}
                                 <span class="intensity-badge {{ lap.intensity }}">{{ lap.intensity }}</span>
@@ -1132,13 +1128,13 @@
                 backgroundColor: 'rgba(239, 68, 68, 0.1)',
             },
             speed: {
-                label: 'Speed (m/s)',
+                label: 'Speed ({{ chart_units.speed }})',
                 data: recordsData.map(r => r.speed),
                 borderColor: '#3b82f6',
                 backgroundColor: 'rgba(59, 130, 246, 0.1)',
             },
             altitude: {
-                label: 'Altitude (m)',
+                label: 'Altitude ({{ chart_units.altitude }})',
                 data: recordsData.map(r => r.altitude),
                 borderColor: '#10b981',
                 backgroundColor: 'rgba(16, 185, 129, 0.1)',

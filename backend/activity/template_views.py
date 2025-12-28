@@ -1,20 +1,26 @@
 import os
 import tempfile
+import json 
+import polyline 
 
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.views import View
 from django.utils.decorators import method_decorator
 from django.http import JsonResponse
 
-from activity.models import FitFileImport, WorkoutLog
+from activity.models import FitFileImport, WorkoutLog, RecordDataPoint, LapLog, SetLog, ActivityLog
 from activity.services.fit_parser import FitFileParserService
 
-import json 
-import polyline 
-from decimal import Decimal
-
+# Import standardized utils from the main backend app
+from backend.utils import (
+    convert_distance,
+    convert_elevation,
+    convert_weight,
+    get_speed_or_pace,
+    convert_speed_to_unit
+)
 
 @method_decorator(login_required, name='dispatch')
 class FitFileUploadView(View):
@@ -271,7 +277,6 @@ class WorkoutAdminView(View):
         count = workouts.count()
         
         # Delete in order to avoid FK issues (or let CASCADE handle it)
-        # The CASCADE should handle this, but explicit is faster for large datasets
         for workout in workouts:
             # Delete time-series data first (usually the biggest table)
             workout.records.all().delete()
@@ -303,29 +308,18 @@ class WorkoutAdminView(View):
             return 0
         
         # Delete in order from most nested to least nested
-        # 1. Time-series records (usually millions of rows)
         RecordDataPoint.objects.filter(workout_log_id__in=workout_ids).delete()
         
-        # 2. Set logs (via activity logs)
         activity_ids = list(ActivityLog.objects.filter(workout_log_id__in=workout_ids).values_list('id', flat=True))
         SetLog.objects.filter(activity_log_id__in=activity_ids).delete()
         
-        # 3. Activity logs
         ActivityLog.objects.filter(workout_log_id__in=workout_ids).delete()
-        
-        # 4. Lap logs
         LapLog.objects.filter(workout_log_id__in=workout_ids).delete()
-        
-        # 5. Device info
         DeviceInfo.objects.filter(workout_log_id__in=workout_ids).delete()
-        
-        # 6. Personal records
         PersonalRecord.objects.filter(user=user).delete()
-        
-        # 7. FIT imports
         FitFileImport.objects.filter(user=user).delete()
         
-        # 8. Finally, workouts themselves
+        # Finally, workouts themselves
         count = len(workout_ids)
         WorkoutLog.objects.filter(id__in=workout_ids).delete()
         
@@ -336,99 +330,164 @@ class WorkoutAdminView(View):
 class WorkoutDetailView(View):
     """
     Detailed view of a single workout with all logs.
+    Uses standardized utils for unit conversion.
     """
     template_name = 'activity/workout_detail.html'
     
     def get(self, request, workout_id):
-        """Display workout detail."""
-        from django.shortcuts import get_object_or_404
-        from activity.models import RecordDataPoint
-        from decimal import Decimal
-        import json
-        
         workout = get_object_or_404(
             WorkoutLog.objects.select_related('session', 'session__week', 'session__week__program'),
             id=workout_id,
             user=request.user
         )
         
-        # Get activity logs with sets
-        activity_logs = workout.activity_logs.select_related(
+        # 1. Determine User Units Preference
+        try:
+            user_units = request.user.user_profile.units
+        except Exception:
+            user_units = 'imperial' # Default
+            
+        is_metric = (user_units == 'metric')
+
+        # 2. Format Main Workout Stats
+        dist_val, dist_unit = convert_distance(workout.total_distance, is_metric)
+        elev_val, elev_unit = convert_elevation(workout.total_ascent, is_metric)
+        speed_val, speed_label = get_speed_or_pace(workout.avg_speed, is_metric, workout.sport)
+        
+        # Create a display object for the template
+        formatted_workout = {
+            'distance': f"{dist_val:,.2f}" if dist_val is not None else None,
+            'distance_label': f"Distance ({dist_unit})" if dist_val else "Distance",
+            'elevation': f"{elev_val:,.0f}" if elev_val is not None else None,
+            'elevation_label': f"Elev Gain ({elev_unit})" if elev_val else "Elev Gain",
+            'avg_speed': speed_val,
+            'avg_speed_label': f"Avg {speed_label}",
+            'calories': f"{workout.total_calories:,}" if workout.total_calories else None,
+            'tss': f"{workout.training_stress_score:.0f}" if workout.training_stress_score else None,
+        }
+
+        # 3. Process Activities & Sets (Weight conversion)
+        activity_logs_qs = workout.activity_logs.select_related(
             'exercise', 'activity'
         ).prefetch_related('set_logs').order_by('order_in_workout')
         
-        # Get laps
-        laps = workout.laps.all().order_by('lap_number')
-        
-        # Get devices
-        devices = workout.devices.all()
-        
-        # Get time-series data summary (sample for charts)
+        formatted_activities = []
+        for activity in activity_logs_qs:
+            act_wrapper = {
+                'obj': activity,
+                'sets': []
+            }
+            
+            # Calculate total volume for header
+            vol_val, vol_unit = convert_weight(activity.total_volume, is_metric)
+            act_wrapper['formatted_volume'] = f"{vol_val:,.0f}{vol_unit}" if vol_val else None
+
+            for s in activity.set_logs.all():
+                w_val, w_unit = convert_weight(s.weight, is_metric)
+                v_val, v_unit = convert_weight(s.volume, is_metric)
+                
+                act_wrapper['sets'].append({
+                    'set_number': s.set_number,
+                    'weight_display': f"{w_val:.1f}{w_unit}" if w_val else "—",
+                    'is_per_side': s.is_per_side,
+                    'reps': s.reps,
+                    'is_to_failure': s.is_to_failure,
+                    'rpe': s.rpe,
+                    'volume_display': f"{v_val:.0f}{v_unit}" if v_val else "—",
+                    'is_completed': s.is_completed
+                })
+            formatted_activities.append(act_wrapper)
+
+        # 4. Process Laps
+        laps_qs = workout.laps.all().order_by('lap_number')
+        formatted_laps = []
+        for lap in laps_qs:
+            l_dist, l_dist_u = convert_distance(lap.total_distance, is_metric)
+            l_speed, l_speed_u = get_speed_or_pace(lap.avg_speed, is_metric, workout.sport)
+            
+            formatted_laps.append({
+                'lap_number': lap.lap_number,
+                'time': f"{lap.total_elapsed_time:.0f}s" if lap.total_elapsed_time else "—",
+                'distance': f"{l_dist:,.2f}{l_dist_u}" if l_dist else "—",
+                'speed': l_speed if l_speed else "—",
+                'power': lap.avg_power,
+                'hr': lap.avg_heart_rate,
+                'cadence': lap.avg_cadence,
+                'intensity': lap.intensity
+            })
+
+        # 5. Process Charts (Convert raw data points)
         records_count = workout.records.count()
         records_sample = []
         
         if records_count > 0:
-            # Sample every Nth record for charting (aim for ~200 points)
             sample_rate = max(1, records_count // 200)
             records_qs = workout.records.order_by('elapsed_seconds')
             
-            # Get sampled records
-            record_ids = list(records_qs.values_list('id', flat=True)[::sample_rate])
-            records_raw = list(records_qs.filter(id__in=record_ids).values(
-                'elapsed_seconds', 'heart_rate', 'speed', 'power', 
-                'cadence', 'altitude', 'latitude', 'longitude'
-            ))
+            # Fetch raw data
+            raw_records = list(records_qs.values(
+                'id', 'elapsed_seconds', 'heart_rate', 'speed', 
+                'power', 'cadence', 'altitude', 'latitude', 'longitude'
+            )[::sample_rate])
             
-            # Convert Decimal values to float for JSON serialization
-            for record in records_raw:
-                converted = {}
-                for key, value in record.items():
-                    if isinstance(value, Decimal):
-                        converted[key] = float(value)
-                    else:
-                        converted[key] = value
-                records_sample.append(converted)
+            for r in raw_records:
+                # Use convert_speed_to_unit for charts (returns float)
+                chart_speed = convert_speed_to_unit(r['speed'], is_metric)
+                
+                # Use convert_elevation (returns tuple, index 0 is val)
+                chart_alt_val, _ = convert_elevation(r['altitude'], is_metric)
+                chart_alt = chart_alt_val if chart_alt_val else 0
+                
+                records_sample.append({
+                    'elapsed_seconds': float(r['elapsed_seconds']),
+                    'heart_rate': r['heart_rate'],
+                    'speed': chart_speed, 
+                    'altitude': chart_alt,
+                    'power': r['power'],
+                    'cadence': r['cadence'],
+                    'latitude': float(r['latitude']) if r['latitude'] else None,
+                    'longitude': float(r['longitude']) if r['longitude'] else None,
+                })
         
-        # Serialize to JSON string for safe JavaScript embedding
         records_json = json.dumps(records_sample)
 
+        # Map Polyline
         map_coords_json = None
         if workout.map_polyline:
             try:
-                # Decode polyline string to list of (lat, lng) tuples
                 coords = polyline.decode(workout.map_polyline)
-                # Convert to list of lists for JSON serialization
                 map_coords_json = json.dumps([list(c) for c in coords])
-            except Exception as e:
-                print(f"Error decoding polyline: {e}")
+            except Exception:
+                pass
         
-        # Get FIT import info if exists
-        fit_import = FitFileImport.objects.filter(workout_log=workout).first()
-        
-        # Calculate some additional stats
         stats = {
-            'total_activities': activity_logs.count(),
-            'total_sets': sum(a.total_sets or 0 for a in activity_logs),
-            'total_reps': sum(a.total_reps or 0 for a in activity_logs),
-            'total_laps': laps.count(),
+            'total_activities': len(formatted_activities),
+            'total_sets': sum(len(a['sets']) for a in formatted_activities),
+            'total_laps': laps_qs.count(),
             'total_records': records_count,
+        }
+        
+        chart_units = {
+            'speed': 'km/h' if is_metric else 'mph',
+            'altitude': 'm' if is_metric else 'ft'
         }
         
         context = {
             'workout': workout,
-            'activity_logs': activity_logs,
-            'laps': laps,
-            'devices': devices,
+            'formatted_workout': formatted_workout,
+            'formatted_activities': formatted_activities,
+            'formatted_laps': formatted_laps,
+            'devices': workout.devices.all(),
             'records_json': records_json,
             'map_coords_json': map_coords_json,
             'has_records': records_count > 0,
-            'fit_import': fit_import,
+            'fit_import': FitFileImport.objects.filter(workout_log=workout).first(),
             'stats': stats,
             'page_title': workout.title or 'Workout Detail',
-            'active_nav': 'admin',
+            'chart_units': chart_units,
+            'speed_label_header': speed_label, 
         }
         return render(request, self.template_name, context)
-
 
 @method_decorator(login_required, name='dispatch')
 class FitFileUploadAjaxView(View):
